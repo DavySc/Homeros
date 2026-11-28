@@ -300,3 +300,4 @@ keys: a map or SPC 5 {letter} leaves which-key's panel up (test_keys_map)~test T
 keys: a map or SPC 5 {letter} leaves the keys pending (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~	nlead = e->ks.pending = 0;¶	hint_end();¶	normal_mappable(1);~	nlead = 0; (void)e;¶	hint_end();¶	normal_mappable(1);
 keys: a lone operator or register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }~int normal_pending(void) { return npend > 0; }
 keys: a lone register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~ || oa.regname; }~; }
+keys: :Declare is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~decl = k == 7 && !strncmp(p, "Declare", 7)~decl = 0

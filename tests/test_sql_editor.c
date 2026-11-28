@@ -54,6 +54,11 @@ static const char *until(const char *s)
 	return res;
 }
 
+static void typed(const char *s)   /* keys as main.c gives them */
+{
+	for (; *s; s++) keys_input(&e, (unsigned char)*s, 0);
+}
+
 static void put(const char *path, const char *s, int mode)
 {
 	FILE *f = fopen(path, "w");
@@ -304,9 +309,11 @@ int main(void)
 	   at the next login; only .sql buffers; never a message */
 	char cat[256];
 	const char *users = "select count(*) n from sys.dm_exec_sessions where is_user_process = 1\n";
-	CHECK(strstr(f5("ms/q.sql", "drop table if exists hca\ncreate table hca (y int)\ndrop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
+	CHECK(strstr(f5("ms/q.sql", "drop table if exists hca\ncreate table hca (y int)\ndrop table if exists hcb\ncreate table hcb (y int)\ndrop table if exists hcat\ncreate table hcat (k int, b int, [v w] nvarchar(9), [t\tab] int, [a\\b] int)\n"), "Completion"));
 	int n = atoi(strstr(f5("ms/v.sql", users), "\n1 \xe2\x94\x82 ") + 6);
-	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	CHECK(!core_edit_file(&e, "ms/q.sql", 0) && !sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 5 && !strcmp(cat, "dbo.hcat.k dbo.hcat.b dbo.hcat.v w dbo.hcat.t\tab dbo.hcat.a\\b "));
+	/* the count is the table's alone (hca before it, hcb after it), a whole name, never empty */
+	CHECK(sql_catalog(&e, e.buf, "hca", hcat, cat) == 1 && sql_catalog(&e, e.buf, "hcb", hcat, cat) == 1 && !sql_catalog(&e, e.buf, "", hcat, cat) && !sql_catalog(&e, e.buf, "hc", hcat, cat));
 	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) > 0 && !strcmp(cat, "dbo.hcat "));   /* the tables, once each */
 	int same = 0;
 	for (int i = 0; i < 20 && !same; i++) same = atoi(strstr(f5("ms/v.sql", users), "\n1 \xe2\x94\x82 ") + 6) == n;
@@ -332,20 +339,100 @@ int main(void)
 	CHECK(catalog(cat) > 0 && !strcmp(cat, "public.hcat.k public.hcat.b public.hcat.v w public.hcat.t\tab public.hcat.a\\b "));
 	CHECK(strstr(f5("ms/w.sql", "if db_id('hcs') is null create database hcs collate Latin1_General_CS_AS\n"), "Completion"));
 	CHECK(strstr(f5("ms/x.sql", "drop table if exists hcs.dbo.hcat\ncreate table hcs.dbo.hcat (K int)\n"), "Completion"));
+	/* the same name in a second schema: each table its own, both found */
+	CHECK(strstr(f5("ms/x2.sql", "use hcs\nif schema_id('hz') is null exec('create schema hz')\ndrop table if exists hz.hcat\ncreate table hz.hcat (Q int)\n"), "Completion") && !sql_disconnect(&e));
 	put("ms/xc.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xc.sql", 0) && !sql_connect(&e, "cs") && sql_key(&e, KEY_F5) == 1 && until("Completion time"));
-	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
+	CHECK(!sql_catalog(&e, e.buf, NULL, NULL, NULL) && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));
+	CHECK(sql_catalog(&e, e.buf, NULL, hcat, (*cat = 0, cat)) == 2 && !strcmp(cat, "dbo.hcat hz.hcat "));
 	CHECK(!sql_disconnect(&e));   /* Windows's loop watches 31 handles: a session fewer leaves the catalog one */
 	/* NULL before this buffer's login dials nothing: its login reads it */
 	put("ms/xd.sql", "select 1 as one\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/xd.sql", 0) && !sql_connect(&e, "cs") && !sql_catalog(&e, e.buf, NULL, NULL, NULL));
 	for (int i = 0; i < 100; i++) loop_once(10);
-	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) > 0 && !strcmp(cat, "dbo.hcat.K "));
-	CHECK(sql_catalog(&e, e.buf, "HCAT", hcat, (*cat = 0, cat)) == 1 && !strcmp(cat, "dbo.hcat.K "));   /* ASCII case ignored, also here */
+	CHECK(!sql_catalog(&e, e.buf, "hcat", hcat, cat) && sql_key(&e, KEY_F5) == 1 && until("Completion time") && catalog(cat) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));
+	CHECK(sql_catalog(&e, e.buf, "HCAT", hcat, (*cat = 0, cat)) == 2 && !strcmp(cat, "dbo.hcat.K hz.hcat.Q "));   /* ASCII case ignored, also here */
 	put("ms/y.txt", "x\n", 0600);
 	CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat));
 	put("msx/o.sql", "select 1\n", 0600);
 	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, "hcat", hcat, cat) && !strcmp(e.msg, "kept"));
+	/* F5 asks for an undeclared @variable on the command line, the file's
+	   own DECLARE as its default; Enter runs; the value is kept, before
+	   each batch that needs it, on its first line */
+	put("ms/pa.sql", "declare @a int = 3\nselect @a * 2 as d, '@b' as [@c] -- @e\nselect 1/0\ngo\nselect 7 + @a as h\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pa.sql", 0));
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 4);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @a int = 3", 18));
+	typed("\r");
+	CHECK(e.mode == MODE_NORMAL && strstr(until("Completion time"), "\n1 \xe2\x94\x82 6 \xe2\x94\x82 @b\n") && strstr(res, "Line 2") && strstr(res, "\n1 \xe2\x94\x82 10\n"));
+	CHECK(!sql_declare(&e, "@A  int = 5") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @A int = 5;"));   /* replaced, case ignored */
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), MSGS "DECLARE @a int = 5;\n(1 row affected)\n\n  \xe2\x94\x82 d  \xe2\x94\x82 @c\n"));   /* the value that ran, shown */
+	CHECK(!sql_declare(&e, "@a") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: nothing declared"));
+	/* Esc forgets the F5: a :Declare typed later keeps its value and runs nothing */
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE);
+	typed("\x1b:Declare @a int = 9\r");
+	for (int i = 0; i < 50; i++) loop_once(10);
+	CHECK(e.mode == MODE_NORMAL && !strstr(results(), " 18 \xe2\x94\x82 @b") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: @a int = 9;"));
+	CHECK(sql_declare(&e, "a int") && strstr(e.msg, ":Declare @name"));
+	char longname[160] = "@";
+	memset(longname + 1, 'x', 129);
+	CHECK(sql_declare(&e, longname) && strstr(e.msg, ":Declare @name"));   /* 128 bytes at most, as the server's names */
+	CHECK(!sql_disconnect(&e));   /* the loop's watches are few: each test's session ends */
+	/* a DECLARE across lines, with a comment and a ;: typed as one line;
+	   a non-ASCII default as its characters; none when the command line
+	   cannot hold it or it holds a line break */
+	put("ms/pc.sql", "declare @m int -- the id\n\t= 4;\nselect @m as m, @n as n, len(@n) as l, @s as s, (select count(*) from @t) as t, len(@w) as w\n"
+		"declare @n nvarchar(20) = N'caf\xc3\xa9 \xe2\x82\xac', @s varchar(9) = 'a\nb', @t table (", 0600);
+	FILE *pc = fopen("ms/pc.sql", "a");
+	for (int i = 0; i < 40; i++) fprintf(pc, "%scolumn%d int", i ? ", " : "", i);
+	fprintf(pc, ")\ndeclare @w varchar(300) = '%0*d'\n", 224, 0);   /* the prompt 252 bytes: as much as keys takes */
+	fclose(pc);
+	CHECK(!core_edit_file(&e, "ms/pc.sql", 0));
+	core_goto(&e, 2, 0);
+	keys_visual(&e, 'V', 2);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @m int = 4", 18));
+	typed("\r");
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 38 && !memcmp(e.cmd, "Declare @n nvarchar(20) = N'caf\xc3\xa9 \xe2\x82\xac'", 38));
+	typed("\r");
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 11 && !memcmp(e.cmd, "Declare @s ", 11));
+	typed("varchar(9) = 'x'\r");
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 11 && !memcmp(e.cmd, "Declare @t ", 11));
+	typed("table (x int)\r");
+	CHECK(e.mode == MODE_CMDLINE && e.cmdlen == 252 && !memcmp(e.cmd, "Declare @w varchar(300) = '000", 30));
+	typed("\r");
+	CHECK(strstr(until("Completion time"), "\n1 \xe2\x94\x82 4 \xe2\x94\x82 caf\xc3\xa9 \xe2\x82\xac \xe2\x94\x82 6 \xe2\x94\x82 x \xe2\x94\x82 0 \xe2\x94\x82 224\n") && !sql_disconnect(&e));
+	/* one byte more: no default, rather than one typed cut */
+	put("ms/pg2.sql", "declare @w varchar(300) = '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+		"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'\nselect @w\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pg2.sql", 0));
+	core_goto(&e, 1, 0);
+	keys_visual(&e, 'V', 1);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 11 && !memcmp(e.cmd, "Declare @w ", 11));
+	typed("\x1b");
+	/* :Declare is for SQL buffers */
+	put("ms/y2.txt", "x\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/y2.txt", 0) && sql_declare(&e, "@a int = 1") && strstr(e.msg, "is for a .sql buffer"));
+	/* Postgres has no @variables: @x is its abs() */
+	CHECK(strstr(f5("pg/pd.sql", "select @n as a from (select -3 as n) t\n"), "\n1 \xe2\x94\x82 3\n") && e.mode != MODE_CMDLINE && !sql_disconnect(&e));
+	/* declared after its use: the server's error, nothing asked */
+	CHECK(strstr(f5("ms/pb.sql", "select @q as q\ndeclare @q int\n"), "Must declare the scalar variable \"@q\"") && e.mode != MODE_CMDLINE && !sql_disconnect(&e));
+	/* the whole file declares it: nothing asked; a procedure's parameters are its own */
+	put("ms/pp.sql", "create or alter procedure #hp @x int as select @x as x\ngo\nexec #hp @x = 4\ngo\ndeclare @k int = 6\ngo\nselect @k as k\n", 0600);
+	CHECK(!core_edit_file(&e, "ms/pa.sql", 0) && sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && until("Completion time") && !sql_disconnect(&e));
+	CHECK(!core_edit_file(&e, "ms/pp.sql", 0));
+	keys_visual(&e, 'V', 2);   /* the procedure and its EXEC: nothing asked */
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode != MODE_CMDLINE && strstr(until("Completion time"), "\n1 \xe2\x94\x82 4\n"));
+	typed("\x1b");
+	core_goto(&e, 6, 0);   /* a DECLARE after a procedure is still the default */
+	keys_visual(&e, 'V', 6);
+	CHECK(sql_key(&e, KEY_F5) == 1 && e.mode == MODE_CMDLINE && e.cmdlen == 18 && !memcmp(e.cmd, "Declare @k int = 6", 18));
+	typed("\r");
+	CHECK(strstr(until("Completion time"), "\n1 \xe2\x94\x82 6\n"));
 	/* the grid: a column as wide as its widest value, a longer one cut at
 	   40 cells with a ..., a NULL apart from the text 'NULL', a CJK value
 	   two cells a character, SSMS's name for a column without one; the faces: the names, the rule, the row

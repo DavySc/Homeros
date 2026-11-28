@@ -1,0 +1,4 @@
+declare @a int = case when 1 = 1 then 1 else 2 end, @b decimal(10, 2) = 1.5 -- c
+select @a, @c, @@rowcount
+go
+exec p @x = @y

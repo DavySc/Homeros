@@ -1,0 +1,15 @@
+# PR 175 review, second pass (head 7b6e066f): my first pass's plants that still apply, and one new (n1)
+r1 @@x asked for (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~w[1] && w[1] != '@' && e - p <= 128~w[1] && e - p <= 128
+r2 declared names compared with case (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~if (!strcasecmp(s->s + i, w)) return 1;~if (!strcmp(s->s + i, w)) return 1;
+r3 a ) never closes (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~*w == ')' && depth ? -1 : 0~0
+r6 an EXEC's last argument at the batch's end not asked for (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~	if (*c && !bad) bad = use(out, &decl, c);~
+r8 only two words looked at for CREATE PROCEDURE (sql_editor)~test TESTS=sql_editor~~src/sql/run.c~create && nw <= 4~create && nw <= 2
+n1 a CASE's END never closes it (sql_vars)~test TESTS=sql_vars~~src/sql/run.c~? 1 : cases && !strcasecmp(w, "end") ? -1 : 0;~? 1 : 0;
+s1 a second batch gets the first batch's DECLAREs too (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~q->pre = s->decl.n;~q->pre = 0;
+s3 the F5's range not clamped to the buffer (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~return run(s, s->pa < len ? s->pa : len, s->pz < len ? s->pz : len);~return (void)len, run(s, s->pa, s->pz);
+s4 the prompt typed without leaving Visual mode (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~keys_feed(E, KEY_ESC, 1), keys_feed(E, ':', 1);~keys_feed(E, ':', 1);
+s5 kept names compared with case (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~		if (!strcasecmp(l->s + i, name)) return~		if (!strcmp(l->s + i, name)) return
+s6 the run not cleared when F5 asks (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~core_msg(E, "sql: out of memory"); s->q.n = 0; return p < 0~core_msg(E, "sql: out of memory"); return p < 0
+s7 a batch that needs no variable gets the DECLAREs (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~q->npre = s->decl.n - q->pre;~q->npre = s->decl.n;
+s9 :Declare with a name over 128 bytes taken (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~n < 2 || n > 128~n < 2
+s10 :Declare in a buffer that is not SQL makes a session (sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~Sess *s = sess(e->buf->nr, is_sql(e->buf));¶	if (!s) return core_msg(e, "sql: :Declare is for a .sql buffer"), -1;~Sess *s = sess(e->buf->nr, 1);¶	if (!s) return core_msg(e, "sql: :Declare is for a .sql buffer"), -1;

@@ -75,7 +75,7 @@ sql: SPC r never closes the results (test_sql_editor)~test TESTS=sql_editor~~src
 sql: Alt+Break's line not written (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~putz(s, "Query was cancelled by user.\n");   /* SSMS's line, at once */~/* SSMS's line, at once */
 win: a dir line never matches a Windows buffer's name (C:\ and backslashes)~win WIN=sql~~src/sql/sql.c~if (file_full(t, d)) snprintf~if (1) snprintf
 win: a password in the connections file refused on Windows (no mode bits there)~win WIN=sql~~src/sql/sql.c~	int open = 1;~	int open = 0;
-sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~if ((text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
+sql: a batch read from the buffer as it is when sent, not as it was at F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a)~(text_read(core_buf_find(E, s->nr)->text, b.a, s->text.s + (b.a - s->base), b.z - b.a), str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a))
 sql: Alt+Break ends the run before the server answers the cancel (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			s->cancel = 1;~			s->q.n = 0;
 sql: a cancelled run's later batches still run (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~if (s->cancel) s->cancel = 0, end(s);~if (s->cancel) s->cancel = 0, next(s);
 sql: no room for the split leaves the run set (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (oom || show(s)) { s->q.n = 0; return -1; }~	if (oom || show(s)) return -1;
@@ -187,3 +187,37 @@ sql: pass= found inside a word (test_sql_editor)~test TESTS=sql_editor~~src/sql/
 sql: only a space before pass=, not a tab (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!match_space(pw[-1])~pw[-1] != ' '
 sql: trust on for every connection (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~o->trust = !strcmp(x, "trust");~o->trust = 1;
 sql: the password's trailing spaces dropped (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~snprintf(pass, sizeof pass, "%s", pw + 5),~snprintf(pass, sizeof pass, "%s", pw + 5), ({ size_t m = strlen(pass); while (m && pass[m - 1] == ' ') pass[--m] = 0; }),
+sql: an EXEC's parameter names asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~else if (in_exec && prev != 2) memcpy(c, w, n + 1);~else if (0) memcpy(c, w, n + 1);
+sql: EXEC @rc = p's @rc taken for a parameter name (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~else if (in_exec && prev != 2) memcpy~else if (in_exec) memcpy
+sql: a DECLARE's names asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~			if (prev == 1) bad =~			if (0) bad =
+sql: a DECLARE's second name asked for (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~after = *w == ',' && !depth && in_decl;~after = 0;
+sql: a DECLARE runs on past the next statement (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~in_decl = !strcasecmp(w, "declare"),~in_decl = in_decl || !strcasecmp(w, "declare"),
+sql: a variable declared after its use asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~		if (!has(&decl, out->s + i)) memmove~		if (1) memmove
+sql: a procedure's parameters asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~is(w, routine)) break;~is(w, routine)) create = 0;
+sql: the DECLAREs on a line of their own, the server's line numbers off by one (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~"DECLARE %s %s; "~"DECLARE %s %s;\n"
+sql: a kept value asked for again (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~			if (v) { r = str_addf~			if (0) { r = str_addf
+sql: :Declare keeps the old value beside the new (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (v) {   /* forgotten, or replaced */~	if (0) {   /* forgotten, or replaced */
+sql: Postgres's @x asked for (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~int p = s->spec.pg ? 0 : params(s, b, a, z);~int p = params(s, b, a, z);
+sql: the file's own DECLARE not the prompt's default (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f && 0 ? f : ""
+sql: a default with a line break (a string's) typed, its break as Enter (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~f && !strpbrk(f, "\r\n") ? f : ""~f ? f : ""
+sql: a default the command line cannot hold typed cut (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> 99999) snprintf
+sql: the default typed byte by byte, not as characters (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);~l = 1, keys_feed(E, (unsigned char)k[i], i + l < m);
+sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	W = NULL;¶	if (key != KEY_F5~	if (key != KEY_F5
+sql: a :Declare by hand runs the session's last F5 (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (W != s) return 0;~	if (0) return 0;
+sql: the defaults read across GO (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~for (size_t i = 0; !r && i < f.n; i++) r = sql_vars(b->text, f.b[i].a, f.b[i].z, out, d);~r = r || sql_vars(b->text, 0, text_len(b->text), out, d);
+sql: CASE's ELSE and END end a DECLARE (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~!depth && !cases && is(w, stmt)~!depth && is(w, stmt)
+sql: a statement word inside ( ) ends a DECLARE (test_sql_vars)~test TESTS=sql_vars~~src/sql/run.c~!depth && !cases && is(w, stmt)~!cases && is(w, stmt)
+sql: a comma inside ( ) ends a DECLARE item (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~(*w == ';' || (*w == ',' && !depth))~(*w == ';' || *w == ',')
+sql: a ; does not end a DECLARE item (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~(*w == ';' || (*w == ',' && !depth))~((*w == ',' && !depth))
+sql: a default's tokens run together, no space for a gap or a comment (test_sql_editor)~test TESTS=sql_editor~~src/sql/run.c~bad = gap && item == 2 && str_add(decls, " ", 1);~bad = gap && item == 3 && str_add(decls, " ", 1);
+sql: a bare @ listed as a variable (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~*w == '@' && w[1] && w[1] != '@'~*w == '@' && w[1] != '@'
+sql: a name over 128 bytes listed cut (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~&& e - p <= 128 &&~&&
+sql: a NUL in a DECLARE ends its pair early (fuzz_sql_vars)~fuzz FUZZERS=sql_vars FUZZ_SECONDS=120~~src/sql/run.c~bad = str_add(decls, b ? &b : " ", 1);~bad = str_add(decls, &b, 1);
+sql: a table's lookup runs on into the tables after it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~k->cols.s + (i + 1 < nt ? o[i + 1] : k->cols.n)~k->cols.s + k->cols.n
+sql: a lookup matches a table its name begins (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!strncasecmp(t, table, strlen(table)))
+sql: a lookup matches a table that begins its name (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!strncasecmp(t, table, strlen(t)))
+sql: the index splits tables by name only, not schema (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~!q || strcmp(p, q) || strcmp(t, q + strlen(q) + 1)~!q || strcmp(t, q + strlen(q) + 1)
+sql: a lookup stops at the first schema's table (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!n && !strcasecmp(t, table))
+sql: the empty name matches every table (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!*table || !strcasecmp(t, table))
+sql: a default of 253 to 255 bytes typed, and keys cuts it (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~> (int)sizeof k - 4) snprintf~> (int)sizeof k - 1) snprintf
+sql: the results do not say which kept value ran (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (b.npre) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");~	if (0) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");

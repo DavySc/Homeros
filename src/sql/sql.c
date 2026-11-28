@@ -14,9 +14,9 @@
 #include "file.h"
 #include "loop.h"
 #include "match.h"
+#include "uni.h"
 #include "db.h"
 #include "run.h"
-#include "uni.h"
 
 /* A connection as the connections file names it */
 typedef struct { char name[256], host[256], user[256], pass[256], db[256]; int pg, port, trust; } Spec;
@@ -33,6 +33,8 @@ typedef struct {
 	Str text, sql;          /* the run's text as it was at F5, from offset base; the running batch's */
 	size_t base;
 	long long t0;
+	Str vars, decl;         /* :Declare's "@name\0type = value\0" pairs; the run's DECLAREs (SqlBatch's pre) */
+	size_t pa, pz;          /* the F5 that asked :Declare */
 	/* the results' layout (put): a line the read cut, the rows held until
 	   the widths are known, the messages that came inside the open set,
 	   the bytes for the buffer and where they go, the cut values whole; the
@@ -50,6 +52,11 @@ typedef struct {
 } Sess;
 
 static Editor *E;
+/* the session whose F5 waits for the Enter that answers its :Declare
+   prompt; any key that reaches sql_key is typed outside that prompt and
+   forgets it (Esc, Ctrl-C, BS on the empty line), so a :Declare typed
+   later never runs other text */
+static void *W;
 static Sess **S;
 static size_t nS;
 
@@ -582,8 +589,9 @@ static void next(Sess *s)
 	}
 	SqlBatch b = s->q.b[s->i];   /* from the text at F5: edits since do not change the run (SqlSess.tla's Snapshot) */
 	s->sql.n = 0;
-	if (str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { fail(s, "sql: out of memory"); end(s); return; }
+	if (str_add(&s->sql, s->decl.s + b.pre, b.npre) || str_add(&s->sql, s->text.s + (b.a - s->base), b.z - b.a) || str_add(&s->sql, "", 1)) { fail(s, "sql: out of memory"); end(s); return; }
 	s->left--;
+	if (b.npre) put(s, s->decl.s + b.pre, b.npre - 1), putz(s, "\n");   /* which value ran (Davy, 2026-11-27: a kept value wins over an edited DECLARE) */
 	if (db_query(&s->db, s->sql.s)) { fail(s, db_net(&s->db)->err); drop(s); return; }
 	loop_write(s->fd, db_pending(&s->db));
 }
@@ -628,6 +636,57 @@ static int show(Sess *s)
 	return core_win_goto(E, 'p', 1);
 }
 
+/* name's "type = value" in a "@name\0type = value\0" list, case ignored */
+static const char *val(const Str *l, const char *name)
+{
+	for (size_t i = 0; i < l->n; i += strlen(l->s + i) + 1, i += strlen(l->s + i) + 1)
+		if (!strcasecmp(l->s + i, name)) return l->s + i + strlen(l->s + i) + 1;
+	return NULL;
+}
+
+/* The file's DECLAREs, batch by batch (GO ends one), into d */
+static int defaults(const Buf *b, Str *out, Str *d)
+{
+	SqlBatches f = {0};
+	int r = sql_split(b->text, 0, text_len(b->text), &f) < 0;
+	for (size_t i = 0; !r && i < f.n; i++) r = sql_vars(b->text, f.b[i].a, f.b[i].z, out, d);
+	free(f.b);
+	return r;
+}
+
+/* Each batch's undeclared @variables DECLAREd before it, on its first
+   line (the server's line numbers stay the buffer's), from :Declare; the
+   first without one is asked for as Davy would type it (DataGrip's
+   parameter prompt), with the file's own DECLARE of it as the default.
+   0 ready, 1 asked, -1 out of memory. */
+static int params(Sess *s, const Buf *b, size_t a, size_t z)
+{
+	Str need = {0}, file = {0}, d = {0};
+	int r = 0;
+	s->decl.n = 0;
+	for (size_t i = 0; !r && i < s->q.n; i++) {
+		SqlBatch *q = &s->q.b[i];
+		r = sql_vars(b->text, q->a, q->z, &need, NULL), q->pre = s->decl.n;
+		for (size_t j = 0; !r && j < need.n; j += strlen(need.s + j) + 1) {
+			const char *v = val(&s->vars, need.s + j), *f;
+			if (v) { r = str_addf(&s->decl, "DECLARE %s %s; ", need.s + j, v); continue; }
+			if ((r = defaults(b, &file, &d))) break;
+			/* the default only if the command line holds all of it, and no
+			   line break (a string's), which would be Enter */
+			char k[sizeof E->cmd];
+			f = val(&d, need.s + j);
+			if (snprintf(k, sizeof k, "Declare %s %s", need.s + j, f && !strpbrk(f, "\r\n") ? f : "") > (int)sizeof k - 4) snprintf(k, sizeof k, "Declare %s ", need.s + j);   /* keys takes a key while 4 bytes are left */
+			keys_feed(E, KEY_ESC, 1), keys_feed(E, ':', 1);
+			for (size_t i = 0, m = strlen(k), l; i < m; i += l)   /* code points, as typed */
+				l = uni_len((const unsigned char *)k, m, i), keys_feed(E, (int)uni_cp((const unsigned char *)k, m, i), i + l < m);
+			s->pa = a, s->pz = z, W = s, r = 1;
+		}
+		q->npre = s->decl.n - q->pre;
+	}
+	free(need.s), free(file.s), free(d.s);
+	return r;
+}
+
 static int run(Sess *s, size_t a, size_t z)
 {
 	Buf *b = core_buf_find(E, s->nr);
@@ -635,11 +694,13 @@ static int run(Sess *s, size_t a, size_t z)
 	if (!s->spec.name[0] && lookup("", b->full, &s->spec)) return -1;
 	long bad = 0;
 	s->q.n = 0;
-	if (s->spec.pg) { SqlBatch one = { a, z, 1 }; if (!(s->q.b = realloc(s->q.b, sizeof one))) return -1; s->q.b[0] = one, s->q.n = 1; }
+	if (s->spec.pg) { SqlBatch one = { .a = a, .z = z, .count = 1 }; if (!(s->q.b = realloc(s->q.b, sizeof one))) return -1; s->q.b[0] = one, s->q.n = 1; }
 	else bad = sql_split(b->text, a, z, &s->q);
 	if (bad < 0) return -1;
 	if (bad) core_msg(E, "sql: line %ld: a GO line sqlcmd refuses (Syntax error near command 'GO')", bad);
 	if (!s->q.n) return bad ? -1 : 0;
+	int p = s->spec.pg ? 0 : params(s, b, a, z);   /* Postgres has no @variables */
+	if (p) { if (p < 0) core_msg(E, "sql: out of memory"); s->q.n = 0; return p < 0 ? -1 : 0; }
 	char t[4096];
 	int oom = 0;
 	s->text.n = 0, s->base = a;   /* the run's own copy (SqlSess.tla's Snapshot) */
@@ -656,6 +717,7 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
+	W = NULL;
 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C && key != KEY_ENTER) return 0;
 	E = e;
 	Sess *s = sess(e->buf->nr, 0);
@@ -754,4 +816,34 @@ int sql_catalog(Editor *e, const Buf *b, const char *table, void (*fn)(void *ctx
 		else if (!strcasecmp(t, table)) for (const char *q; p < z; p = q, n++) q = row(p, &t, &col), fn(ctx, p, t, col);
 	}
 	return n;
+}
+
+int sql_declare(Editor *e, const char *arg)
+{
+	E = e;
+	Sess *s = sess(e->buf->nr, is_sql(e->buf));
+	if (!s) return core_msg(e, "sql: :Declare is for a .sql buffer"), -1;
+	if (!*arg) {   /* the list */
+		char m[sizeof e->msg] = "sql:";
+		for (size_t i = 0, n; i < s->vars.n; i += n + strlen(s->vars.s + i + n) + 1)
+			n = strlen(s->vars.s + i) + 1, snprintf(m + strlen(m), sizeof m - strlen(m), " %s %s;", s->vars.s + i, s->vars.s + i + n);
+		return core_msg(e, "%s", s->vars.n ? m : "sql: nothing declared"), 0;
+	}
+	size_t n = strcspn(arg, " \t");
+	if (*arg != '@' || n < 2 || n > 128) return core_msg(e, "sql: :Declare @name type = value"), -1;
+	char name[130];
+	memcpy(name, arg, n), name[n] = 0;
+	const char *v = val(&s->vars, name);
+	if (v) {   /* forgotten, or replaced */
+		char *p = (char *)v - n - 1;
+		size_t len = n + 1 + strlen(v) + 1;
+		memmove(p, p + len, s->vars.n - (size_t)(p - s->vars.s) - len), s->vars.n -= len;
+	}
+	const char *rest = arg + n + strspn(arg + n, " \t");
+	if (!*rest) return 0;
+	if (str_add(&s->vars, name, n + 1) || str_add(&s->vars, rest, strlen(rest) + 1)) return core_msg(e, "sql: out of memory"), -1;
+	if (W != s) return 0;
+	W = NULL;
+	size_t len = text_len(core_buf_find(e, s->nr)->text);   /* no key came between, but a reload from disk may have */
+	return run(s, s->pa < len ? s->pa : len, s->pz < len ? s->pz : len);   /* the F5 whose prompt this answers */
 }

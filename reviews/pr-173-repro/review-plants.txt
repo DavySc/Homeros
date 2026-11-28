@@ -1,0 +1,11 @@
+rv: every table's columns run to the catalog's end~test TESTS=sql_editor~~src/sql/sql.c~(i + 1 < nt ? o[i + 1] : k->cols.n)~k->cols.n
+rv: a table matches a name it is a prefix of~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!strncasecmp(t, table, strlen(t)))
+rv: a name matches a table it is a prefix of~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!strncasecmp(t, table, strlen(table)))
+rv: the index kept when the rows are dropped~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = c->tabs.n = 0;~	if (st != 2) c->cols.n = 0;
+rv: the table list counts nothing~test TESTS=sql_editor~~src/sql/sql.c~if (!table) fn(ctx, p, t, NULL), n++;~if (!table) fn(ctx, p, t, NULL);
+rv: the table list gives the first column~test TESTS=sql_editor~~src/sql/sql.c~if (!table) fn(ctx, p, t, NULL), n++;~if (!table) fn(ctx, p, t, col), n++;
+rv: the index compares the table only, not the schema~test TESTS=sql_editor~~src/sql/sql.c~!q || strcmp(p, q) || strcmp(t, q + strlen(q) + 1)~!q || strcmp(t, q + strlen(q) + 1)
+rv: only the first table of that name, not every schema's~test TESTS=sql_editor~~src/sql/sql.c~for (size_t i = 0; i < nt; i++) {~for (size_t i = 0; i < nt && !(table && n); i++) {
+rv: the first table left out of the index~test TESTS=sql_editor~~src/sql/sql.c~if (n = row(p, &t, &col), !q || strcmp(p, q)~if (n = row(p, &t, &col), (q && strcmp(p, q))
+rv: the table list skips the last table~test TESTS=sql_editor~~src/sql/sql.c~for (size_t i = 0; i < nt; i++) {~for (size_t i = 0; i < nt - !table; i++) {
+rv: the empty name lists every table's columns~test TESTS=sql_editor~~src/sql/sql.c~else if (!strcasecmp(t, table))~else if (!*table || !strcasecmp(t, table))

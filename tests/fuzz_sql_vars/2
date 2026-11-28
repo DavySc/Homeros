@@ -1,0 +1,3 @@
+create procedure p @x int as select @x
+go
+declare @n nvarchar(9) = N'café', @t table (x int); select * from @t where x = @z
