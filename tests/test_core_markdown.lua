@@ -20,3 +20,7 @@ require('render-markdown').setup({
   paragraph = off, yaml = off,
   win_options = { conceallevel = { rendered = 0 } },
 })
+-- the pop token: the LSP float as hover opens it (focus_id as there)
+vim.api.nvim_create_user_command('Pop', function()
+  vim.lsp.util.open_floating_preview(vim.fn.readfile('p.md'), 'markdown', { focus_id = 'textDocument/hover' })
+end, {})

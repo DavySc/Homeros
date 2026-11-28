@@ -167,14 +167,20 @@ static int usable(const char *m)
    gd (Davy's: vim.lsp.buf.definition()) and SPC m a (clangd's switch between source and header): what the
    server says about the cursor goes to tools_locs, a list for references
    and symbols; an error answer is none (vim.lsp.buf's get_locations()
-   reads only results), but for symbols (the default handler's) */
-static const char *const what[] = { "locations", "references", "document symbols", "locations" };
+   reads only results), but for symbols (the default handler's); K's
+   hover to the float, while the cursor is where K was typed
+   (ctx_is_valid()) */
+static const char *const what[] = { "locations", "references", "document symbols", "locations", "hover" };
 static char tagname[256];
+static struct { Buf *b; size_t line, col; } asked;
 
 static void found(void *ctx, const LspLoc *v, int n)
 {
 	int k = (int)((const char *const *)ctx - what);
-	if (k == 3 && n <= 0) core_msg(E, "E426: Tag not found: %s", tagname);
+	if (k == 4 && (E->buf != asked.b || E->win->line != asked.line || E->win->col != asked.col)) return;
+	if (k == 4) n < 0 ? core_msg(E, "No information available") : !n ? core_msg(E, "Empty hover response")
+	                  : core_float(E, v->text, strlen(v->text), (int)v->line);
+	else if (k == 3 && n <= 0) core_msg(E, "E426: Tag not found: %s", tagname);
 	else if (k == 2 && v && n < 0) core_msg(E, "%s", v->text);
 	else if (n <= 0) core_msg(E, "No %s found", what[k]);
 	else if (k < 3) tools_locs(E, v, n, k > 0);
@@ -209,7 +215,9 @@ static void found(void *ctx, const LspLoc *v, int n)
 
 void lsp_go(const char *method, const char *tag)
 {
-	int k = tag ? 3 : !strcmp(method, "textDocument/references") ? 1 : !strcmp(method, "textDocument/documentSymbol") ? 2 : 0;
+	int k = tag ? 3 : !strcmp(method, "textDocument/references") ? 1 : !strcmp(method, "textDocument/documentSymbol") ? 2
+	      : !strcmp(method, "textDocument/hover") ? 4 : 0;
+	asked.b = E->buf, asked.line = E->win->line, asked.col = E->win->col;
 	if (tag) snprintf(tagname, sizeof tagname, "%s", tag);
 	if (lsp_locs(E->buf->lsp, method, core_line_start(E, E->win->line) + E->win->col, tag != NULL, found, (void *)(what + k))) {
 		if (tag) found((void *)(what + 3), NULL, 0);

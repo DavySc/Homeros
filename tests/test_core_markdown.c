@@ -2,7 +2,8 @@
    Neovim: replays the cases that tests/test_core_markdown.py recorded from
    Neovim with render-markdown (tests/test_core_markdown.txt: 1000 random,
    then tests/test_core_markdown_cases.py's 44: sideways scroll, skipcol,
-   fillers, Visual mode) and compares every row's text, the colours the .py
+   fillers, Visual mode; tests/test_core_float.txt: 300 random with the LSP
+   float, core_float) and compares every row's text, the colours the .py
    names, and the cursor.  usage: test_core_markdown [FILE] [-v] */
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,8 @@
 
 static size_t r1, r2;   /* syntax_update's changed fold rows, unused here */
 
-static char line[4096];
+static char line[4096], pop[1 << 16];
+static size_t npop;
 
 /* a letter per colour the .py names */
 static char letter(const unsigned char *c, const char *const *hex, const char *set)
@@ -69,85 +71,99 @@ static void command(Editor *e, Grid *g, const char *t)
 	/* 'v': the area from the cursor */
 	else if (!strcmp(t, "visual")) e->ks.visual = 'v', e->ks.vline = e->win->line, e->ks.vcol = e->win->col;
 	else if (!strcmp(t, "redraw")) {}   /* CTRL-L: the core draws whole frames */
+	else if (!strcmp(t, "pop")) core_float(e, pop, npop, 1);
 	else CHECK(!"command");
 	do core_draw(e, NULL, g);
 	while (syntax_update(e->buf->syn, e->buf->text, NULL, &r1, &r2));
 }
 
-/* Cases listed as known, 22 of 1044.  Drawing's: an ordered number wider
-   than its marker, which Neovim puts inline (1032); a tab before a
-   heading's marker (1041); an info string past the 256 bytes draw_md
-   reads, in a window wider than they are (1042).  The core's (package 4,
-   reported): the window's top after a split (9 ... 961), and with wrap
-   after a jump near a line taller than scrolloff allows (110 ... 979);
-   after v on a Tab without a move, Neovim keeps the cursor on the Tab's
-   last cell (the w_virtcol n_start_visual_mode() leaves valid), the core
-   moves it to the first (654, 738).  The syntax package's: an inline colour
-   Neovim does not give (272). */
+/* Cases listed as known, 29 of 1344 (1044 Markdown screens, then 300
+   floats).  Drawing's: an ordered number wider than its marker, which
+   Neovim puts inline (1032); a tab before a heading's marker (1041); an
+   info string past the 256 bytes draw_md reads, in a window wider than
+   they are (1042).  The core's (package 4, reported): the window's top
+   after a split (9 ... 961; 1054, 1259 also without the float, run), and
+   with wrap after a jump near a line taller than scrolloff allows (110
+   ... 979; 1055, 1117, 1154, 1182 also without the float, run; 1053
+   opens the float before the scroll Neovim makes only on i); after v on a Tab without a move, Neovim keeps the cursor on
+   the Tab's last cell (the w_virtcol n_start_visual_mode() leaves valid),
+   the core moves it to the first (654, 738).  The syntax package's: an
+   inline colour Neovim does not give (272). */
 static int known(int n)
 {
-	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961,
-	                         110, 330, 854, 979, 654, 738, 272, 1032, 1041, 1042 };
+	static const int k[] = { 9, 10, 11, 73, 138, 506, 549, 683, 693, 731, 882, 961, 1054, 1259,
+	                         110, 330, 854, 979, 1053, 1055, 1117, 1154, 1182, 654, 738, 272, 1032, 1041, 1042 };
 	for (size_t i = 0; i < sizeof k / sizeof *k; i++) if (k[i] == n) return 1;
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
-	const char *path = "tests/test_core_markdown.txt";
-	int verbose = 0, ncase = 0, nknown = 0, bad = 0;
-	for (int i = 1; i < argc; i++) if (!strcmp(argv[i], "-v")) verbose = 1; else path = argv[i];
-	FILE *in = fopen(path, "r"), *md = NULL, *md2 = NULL;
+	const char *path[2] = { "tests/test_core_markdown.txt", "tests/test_core_float.txt" };
+	int verbose = 0, ncase = 0, nknown = 0, bad = 0, npath = 2;
+	for (int i = 1; i < argc; i++) if (!strcmp(argv[i], "-v")) verbose = 1; else path[0] = argv[i], npath = 1;
+	FILE *in = NULL, *md = NULL, *md2 = NULL;
 	char dir[] = "/tmp/test_core_markdown.XXXXXX", cwd[4096];
 	static char toks[16][64], want[64][3][1024];
-	CHECK(in && mkdtemp(dir) && getcwd(cwd, sizeof cwd));
+	CHECK(mkdtemp(dir) && getcwd(cwd, sizeof cwd));
 	int rows = 0, cols = 0, nrow = 0, ntok = 0, xr = 0, xc = 0;
-	while (fgets(line, sizeof line, in)) {
-		line[strcspn(line, "\n")] = 0;
-		if (line[0] == 'C') {
-			CHECK(sscanf(line + 2, "%d %d", &rows, &cols) == 2 && rows <= 64);
-			CHECK(!chdir(dir) && (md = fopen("f.md", "w")) && (md2 = fopen("g.md", "w")) && !chdir(cwd));
-			nrow = ntok = 0;
-		} else if (line[0] == 'L' || line[0] == 'M') fprintf(line[0] == 'L' ? md : md2, "%s\n", line + 2);
-		else if (line[0] == 'T') { CHECK(ntok < 16 && strlen(line + 2) < sizeof toks[0]); strcpy(toks[ntok++], line + 2); }
-		else if (line[0] == 'X') CHECK(sscanf(line + 2, "%d %d", &xr, &xc) == 2);
-		else if (line[0] == 'S' || line[0] == 'B' || line[0] == 'F') {
-			int k = line[0] == 'S' ? 0 : line[0] == 'B' ? 1 : 2;
-			CHECK(nrow < 64 && strlen(line + 2) < sizeof want[nrow][k]);
-			strcpy(want[nrow][k], line + 2);
-			if (k == 2) nrow++;
-		} else if (line[0] == 'E') {
-			static Editor e;
-			Grid g = { 0 };
-			fclose(md);
-			fclose(md2);
-			CHECK(!chdir(dir) && !core_open(&e, "f.md") && !grid_resize(&g, rows, cols));
-			CHECK(e.buf->syn);
-			/* a first frame tells the core its size, as main.c: before it
-			   the window is Neovim's default 80 columns */
-			command(&e, &g, "k:");
-			for (int t = 0; t < ntok; t++) command(&e, &g, toks[t]);
-			if (known(++ncase)) nknown++;
-			int diff = !known(ncase) && e.mode != MODE_CMDLINE && (g.crow != xr || g.ccol != xc);
-			if (diff && (!bad || verbose))
-				fprintf(stderr, "case %d cursor: nvim %d,%d core %d,%d\n", ncase, xr, xc, g.crow, g.ccol);
-			/* every row but the status lines (mini.statusline's, test_core_status) */
-			for (int r = 0; r < nrow && !diff && !known(ncase); r++)
-				for (int k = 0; k < 3 && !diff && !status_row(&e, r); k++)
-					if (strcmp(row(&g, r, "SBF"[k]), want[r][k])) {
-						diff = 1;
-						if (!bad || verbose)
-							fprintf(stderr, "case %d row %d %c:\n  nvim [%s]\n  core [%s]\n", ncase,
-							        r, "SBF"[k], want[r][k], row(&g, r, "SBF"[k]));
-					}
-			if (diff && verbose) for (int r = 0; r < nrow; r++) fprintf(stderr, "  core S %s\n", row(&g, r, 'S'));
-			bad += diff;
-			core_free(&e);
-			grid_free(&g);
-			CHECK(!unlink("f.md") && !unlink("g.md") && !chdir(cwd));
+	for (int f = 0; f < npath; f++) {
+		CHECK((in = fopen(path[f], "r")));
+		while (fgets(line, sizeof line, in)) {
+			line[strcspn(line, "\n")] = 0;
+			if (line[0] == 'C') {
+				CHECK(sscanf(line + 2, "%d %d", &rows, &cols) == 2 && rows <= 64);
+				CHECK(!chdir(dir) && (md = fopen("f.md", "w")) && (md2 = fopen("g.md", "w")) && !chdir(cwd));
+				nrow = ntok = 0;
+				npop = 0;
+			} else if (line[0] == 'P') {
+				size_t k = strlen(line + 2);
+				CHECK(npop + k < sizeof pop);
+				memcpy(pop + npop, line + 2, k);
+				npop += k;
+				pop[npop++] = '\n';
+			} else if (line[0] == 'L' || line[0] == 'M') fprintf(line[0] == 'L' ? md : md2, "%s\n", line + 2);
+			else if (line[0] == 'T') { CHECK(ntok < 16 && strlen(line + 2) < sizeof toks[0]); strcpy(toks[ntok++], line + 2); }
+			else if (line[0] == 'X') CHECK(sscanf(line + 2, "%d %d", &xr, &xc) == 2);
+			else if (line[0] == 'S' || line[0] == 'B' || line[0] == 'F') {
+				int k = line[0] == 'S' ? 0 : line[0] == 'B' ? 1 : 2;
+				CHECK(nrow < 64 && strlen(line + 2) < sizeof want[nrow][k]);
+				strcpy(want[nrow][k], line + 2);
+				if (k == 2) nrow++;
+			} else if (line[0] == 'E') {
+				static Editor e;
+				Grid g = { 0 };
+				fclose(md);
+				fclose(md2);
+				CHECK(!chdir(dir) && !core_open(&e, "f.md") && !grid_resize(&g, rows, cols));
+				CHECK(e.buf->syn);
+				/* a first frame tells the core its size, as main.c: before it
+				   the window is Neovim's default 80 columns */
+				command(&e, &g, "k:");
+				for (int t = 0; t < ntok; t++) command(&e, &g, toks[t]);
+				int skip = known(++ncase);
+				nknown += skip;
+				int diff = !skip && e.mode != MODE_CMDLINE && (g.crow != xr || g.ccol != xc);
+				if (diff && (!bad || verbose))
+					fprintf(stderr, "case %d cursor: nvim %d,%d core %d,%d\n", ncase, xr, xc, g.crow, g.ccol);
+				/* every row but the status lines (mini.statusline's, test_core_status) */
+				for (int r = 0; r < nrow && !diff && !skip; r++)
+					for (int k = 0; k < 3 && !diff && !status_row(&e, r); k++)
+						if (strcmp(row(&g, r, "SBF"[k]), want[r][k])) {
+							diff = 1;
+							if (!bad || verbose)
+								fprintf(stderr, "case %d row %d %c:\n  nvim [%s]\n  core [%s]\n", ncase,
+								        r, "SBF"[k], want[r][k], row(&g, r, "SBF"[k]));
+						}
+				if (diff && verbose) for (int r = 0; r < nrow; r++) fprintf(stderr, "  core S %s\n", row(&g, r, 'S'));
+				bad += diff;
+				core_free(&e);
+				grid_free(&g);
+				CHECK(!unlink("f.md") && !unlink("g.md") && !chdir(cwd));
+			}
 		}
+		fclose(in);
 	}
-	fclose(in);
 	rmdir(dir);
 	printf("test_core_markdown: %d render-markdown screens: %d differ (%d known, not compared)\n", ncase, bad, nknown);
 	return bad != 0;

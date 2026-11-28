@@ -55,3 +55,7 @@ CASES += [
  # double-width character)
  ('a filler on the cursor line', 6, 50, ['漢字' * 30 + 'x' * 60, 'end'], ['k:141|']),
 ]
+# With --float (name, rows, cols, [lines], [commands], [the float's lines]):
+# empty code blocks past the float's rows but within render-markdown's view
+# (its window's lines and 20 more): their fences hidden, the float one row
+FLOAT_CASES = [('blocks past the rows', 20, 50, ['x'] * 19, ['k:9G', 'pop'], ['x'] + ['```', '```'] * 10)]

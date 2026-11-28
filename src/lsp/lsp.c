@@ -85,7 +85,6 @@ struct LspDoc {
 	Ed *log;                /* the edits since floor, oldest first */
 	int nlog;
 	long floor;             /* the oldest version the log can map from */
-	struct { long id, ver; char *ans; } ask[LSP_NASK];   /* id 0: no reply pending */
 	LspDoc *link;
 };
 
@@ -294,7 +293,6 @@ static void forget(LspDoc *d)
 	d->tokid = 0;
 	d->prog.ver = -1;                   /* elaborated anew: no word on it yet */
 	if (d == G.d) G.shown = 0, G.sess.n = 0;    /* a new server: its own RPC sessions */
-	for (int k = 0; k < LSP_NASK; k++) { free(d->ask[k].ans); d->ask[k].ans = NULL; d->ask[k].id = 0; }
 	core_changed = 1;
 	gpoke(d);
 }
@@ -503,7 +501,6 @@ void lsp_restart(LspDoc *d)
 		for (LspDoc *e = s->docs; e; e = e->link) reopen(e);
 		return;
 	}
-	for (int k = 0; k < LSP_NASK; k++) cancel(d, &d->ask[k].id);
 	begin("textDocument/didClose");
 	str_addf(&o, "{\"textDocument\":{\"uri\":\"%s\"}}", d->uri);
 	end(s);
@@ -514,31 +511,6 @@ const LspDiag *lsp_diags(const LspDoc *d, int *n) { *n = d ? d->diag.n : 0; retu
 const LspDiag *lsp_progress(const LspDoc *d, int *n) { *n = d ? d->prog.n : 0; return d ? d->prog.v : NULL; }
 
 static int current(const LspDoc *d, long ver) { return ver == d->ver && !d->chg.n; }   /* no edit since ver */
-
-void lsp_ask(LspDoc *d, int kind, size_t pos)
-{
-	if (!d || d->s->proc < 0) return;
-	lsp_flush(d);
-	cancel(d, &d->ask[kind].id);
-	free(d->ask[kind].ans);
-	d->ask[kind].ans = NULL;
-	d->ask[kind].id = d->s->next++;
-	d->ask[kind].ver = d->ver;
-	o.n = 0;
-	str_addf(&o, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"%s\"},\"position\":",
-	         d->ask[kind].id, d->uri);
-	putpos(&o, d->t, pos);
-	str_lit(&o, "}}");
-	send(d->s);
-}
-
-/* A reply is shown only if the text has not changed since the request
-   (LspSync: mapping it from the request's version is wrong, the server may
-   have answered on a newer one). */
-const char *lsp_answer(const LspDoc *d, int kind)
-{
-	return d && current(d, d->ask[kind].ver) ? d->ask[kind].ans : NULL;
-}
 
 /* --- receiving ------------------------------------------------------------- */
 
@@ -786,20 +758,6 @@ static void handle(Srv *s, const char *m, size_t n)
 			if (current(d, d->tokver)) decode(d, m, json_get(m, tk, json_get(m, tk, 0, "result"), "data"));
 			return;
 		}
-	for (LspDoc *d = s->docs; d; d = d->link)
-		for (int k = 0; k < LSP_NASK; k++) {
-			if (d->ask[k].id != rid) continue;
-			d->ask[k].id = 0;
-			int r = json_get(m, tk, 0, "result");
-			if (r < 0) return;                  /* an error: cancelled */
-			int c = json_get(m, tk, r, "contents");
-			if (c >= 0 && tk[c].type == 'o') c = json_get(m, tk, c, "value");      /* MarkupContent */
-			if (c >= 0 && tk[c].type == 'a') c = json_at(tk, c, 0);                 /* MarkedString[] */
-			if (c >= 0 && tk[c].type == 'o') c = json_get(m, tk, c, "value");      /* {language, value} */
-			d->ask[k].ans = c >= 0 && tk[c].type == 's' ? str(m, c) : strdup("");
-			core_changed = 1;
-			return;
-		}
 }
 
 static void dead(Srv *s)
@@ -878,7 +836,7 @@ int lsp_send(const char *u, const char *method, const char *params, size_t n, Ls
 
 /* --- places (lsp_locs) ------------------------------------------------------- */
 
-typedef struct { LspLocFn fn; void *ctx; char *uri; int sort, one; } Want;
+typedef struct { LspLocFn fn; void *ctx; char *uri; long ver; int sort, one, hover; } Want;
 typedef struct { char *uri, *text; Pos p; } Hit;
 static Hit *hits;
 static int nhits, caphits;
@@ -947,12 +905,87 @@ static int hitcmp(const void *x, const void *y)
 	return c ? c : before(a->p, b->p) ? -1 : before(b->p, a->p);
 }
 
+/* split_lines(): '\r\n' and '\r' as '\n', empty lines at either end
+   dropped; with noblank, the blank lines after the description (once a line
+   starts like "@param" or "@return") but one before an indented code
+   block, and a blank line put before each such line.  Into o, each line
+   ended by '\n'. */
+static void split(Str *o, const char *m, int i, int noblank)
+{
+	char *v = str(m, i), *p = v ? v : "";
+	size_t k = 0, a = 0;
+	for (char *q = p; *q; q++) if (*q != '\r' || (q[1] != '\n' && (*q = '\n'))) p[k++] = *q;
+	while (k && p[k - 1] == '\n') k--;
+	while (a < k && p[a] == '\n') a++;
+	int desc = 1, wasblank = 1;
+	for (size_t z; a < k; a = z + 1) {
+		z = a + strcspn(p + a, "\n");
+		if (z > k) z = k;
+		const char *l = p + a, *at = l + (*l == ' ');
+		int ann = at[0] == '@' && (at[1] == 'p' || at[1] == 'r' || (at[1] && at[1] != '\n' && (at[2] == 'p' || at[2] == 'r')));
+		desc &= !ann;
+		if (ann && noblank && !wasblank) str_lit(o, "\n"), wasblank = 1;
+		int blank = strspn(l, " \t\v\f") >= z - a;
+		int code = z < k && (!strncmp(p + z + 1, "    ", 4) || p[z + 1] == '\t');   /* the next line an indented code block */
+		if (desc || !noblank || !blank || code) str_add(o, l, z - a), str_lit(o, "\n"), wasblank = blank;
+	}
+	free(v);
+}
+
+/* convert_input_to_markdown_lines(): a MarkedString (a string, or a code
+   block for {language, value}), MarkupContent's value, or a list */
+static void mdlines(Str *o, const char *m, int c)
+{
+	int lang = json_get(m, tk, c, "language");
+	if (tk[c].type == 's') split(o, m, c, 1);
+	else if (tk[c].type == 'a') for (int k = 0, e; (e = json_at(tk, c, k)) >= 0; k++) mdlines(o, m, e);
+	else if (json_get(m, tk, c, "kind") >= 0) split(o, m, json_get(m, tk, c, "value"), 1);
+	else if (lang >= 0) {
+		char *g = str(m, lang);
+		str_addf(o, "```%s\n", g ? g : "");
+		free(g);
+		split(o, m, json_get(m, tk, c, "value"), 0);
+		str_lit(o, "```\n");
+	}
+}
+
+/* vim.lsp.buf.hover()'s answer in v: -2 none once the text changed
+   (ctx_is_valid()), -1 none ("No information available"), 0 empty ("Empty
+   hover response"), 1 its lines (Markdown, or plain text) */
+static int hover(const Want *w, const char *m, int r, LspLoc *v)
+{
+	const LspDoc *d = doc_of(w->uri);
+	if (!d || !current(d, w->ver)) return -2;
+	int c = r >= 0 ? json_get(m, tk, r, "contents") : -1, e = c >= 0 && tk[c].type == 'a' ? json_at(tk, c, 0) : -1;
+	if (c < 0) return -1;
+	/* valid: the first value (MarkupContent's, MarkedString[]'s) not empty */
+	int x = tk[c].type == 's' ? c : json_get(m, tk, c, "value");
+	if (x < 0 && e >= 0) x = tk[e].type == 's' ? e : json_get(m, tk, e, "value");
+	if (x < 0 || tk[x].type != 's' || tk[x].z == tk[x].a) return 0;
+	/* plain text as it is (vim.split()); the float drops its empty lines
+	   at either end */
+	int plain = is(m, json_get(m, tk, c, "kind"), "plaintext");
+	Str o = { 0 };
+	if (plain) o.s = str(m, x);
+	else mdlines(&o, m, c), str_lit(&o, "");
+	*v = (LspLoc){ NULL, o.s, !plain, 0 };
+	return 1;
+}
+
 static void located(void *ctx, const char *m, size_t n)
 {
 	Want *w = ctx;
 	int ok = m && json_parse(m, n, &tk, &ntk) >= 0, r = ok ? json_get(m, tk, 0, "result") : -1, nv = -1, e = -1, wk;
 	LspLoc *v = NULL, err = { 0 };
 	nhits = 0;
+	if (w->hover) {
+		LspLoc l;
+		int k = hover(w, m, r, &l);
+		if (k > -2) w->fn(w->ctx, &l, k);
+		if (k > 0) free(l.text);
+		free(w->uri); free(w);
+		return;
+	}
 	/* an error as Neovim's handlers say it: the server's name, the code,
 	   the message */
 	if (ok && r < 0 && (e = json_get(m, tk, 0, "error")) >= 0) {
@@ -1034,6 +1067,8 @@ int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, vo
 	if (!w || !(w->uri = strdup(d->uri))) { free(w); return -1; }
 	w->fn = fn; w->ctx = ctx; w->sort = !tag;
 	w->one = strcmp(method, "textDocument/references") != 0;
+	w->ver = d->ver;
+	w->hover = !strcmp(method, "textDocument/hover");
 	q.n = 0;
 	if (!strcmp(method, "textDocument/switchSourceHeader")) str_addf(&q, "{\"uri\":\"%s\"}", d->uri);
 	else {

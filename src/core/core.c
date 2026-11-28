@@ -104,13 +104,55 @@ int core_cellw(const Win *w, const unsigned char *s, size_t n, size_t i, size_t 
 	return tw > 0 && v % (size_t)tw == (size_t)tw - 1 ? 3 : 2;
 }
 
+static int isbreak(unsigned char c) { return c && strchr(" \t!@*-+;:,./?", c); }   /* 'breakat' */
+
+int lbr_cellw(const Win *w, Lbr *b, const LineIt *it, const unsigned char *s, size_t k, size_t v, int *head)
+{
+	int size = core_cellw(w, s, k, 0, v), W = w->w - win_numw(w);
+	unsigned char nx = it->i < it->n ? it->b[it->i] : 0;
+	/* get_breakindent_win(): the indent ('breakindentopt' min:20); the
+	   line's whole indent where the line breaks after it, else as much of
+	   it as is under v, which is as far as it is clamped (W - 20) */
+	b->white = b->white && (*s == ' ' || *s == '\t');
+	b->ind += b->white ? size : 0;
+	int bri = b->ind < W - 20 ? b->ind : W - 20 > 0 ? W - 20 : 0, seen = b->seen;
+	b->seen = seen || !isbreak(*s);
+	*head = 0;
+	if (!w->lbr || !w->wrap || W <= 0) return size;
+	if (bri > 0) {
+		long wc = (long)v, added = 0;
+		if (wc >= W) {
+			wc = (wc - W) % W;
+			if (wc < bri) added = bri - wc, wc = bri;
+		}
+		if (wc + size > W) added += (size - (W - wc) + (W - bri) - 1) / (W - bri) * bri;
+		size += (int)added;
+		*head = (int)added;
+	}
+	/* a blank before a word, past the line's leading break characters:
+	   the row's rest when the word does not fit */
+	if (isbreak(*s) && !isbreak(nx) && seen) {
+		long adj = size - 1, cm = W - adj, v2 = (long)v;
+		if ((long)v >= cm) cm = W + (((long)v + adj - W) / W + 1) * W - adj;
+		LineIt c = *it;
+		const unsigned char *q;
+		unsigned char pb = *s;
+		for (size_t n; (n = lit_next(&c, &q)) && (isbreak(*q) || v2 == (long)v || !isbreak(pb)); pb = *q) {
+			int x = core_cellw(w, q, n, 0, (size_t)v2);
+			if ((v2 += x == 3 && *q >= 0x80 ? 2 : x) >= cm) { size = (int)(cm - (long)v + adj); break; }
+		}
+	}
+	return size;
+}
+
 size_t win_vcol_end(const Win *w, size_t l)
 {
 	LineIt it;
 	const unsigned char *s;
 	size_t v = 0, k;
+	Lbr b = { 0, 1, 0 };
 	lit_init(&it, w->buf, l);
-	while ((k = lit_next(&it, &s))) v += (size_t)core_cellw(w, s, k, 0, v);
+	while ((k = lit_next(&it, &s))) v += (size_t)lbr_cellw(w, &b, &it, s, k, v, &(int){ 0 });
 	return v;
 }
 
@@ -283,6 +325,189 @@ void core_visual(Editor *e, size_t *a, size_t *z)
 	if (*z > text_len(e->buf->text)) *z = text_len(e->buf->text);
 }
 
+/* ---- the LSP float (lsp/util.lua open_floating_preview()) ---- */
+
+struct PopAt core_popat;
+static int rm_attached;   /* render-markdown has attached to a buffer (state.attach()) */
+
+static int blank_line(const char *s, size_t n)   /* is_blank_line(): ^%s*$ */
+{
+	for (size_t i = 0; i < n; i++) if (!memchr(" \t\v\f\r", s[i], 5)) return 0;
+	return 1;
+}
+
+/* is_separator_line(): a thematic break, up to 3 spaces, then 3 or more of
+   one of - _ * with spaces and tabs between */
+static int separator(const char *s, size_t n)
+{
+	size_t i = 0, k = 0;
+	while (i < n && i < 3 && s[i] == ' ') i++;
+	if (i == n || (s[i] != '-' && s[i] != '_' && s[i] != '*')) return 0;
+	for (char d = s[i]; i < n; i++)
+		if (s[i] == d) k++;
+		else if (s[i] != ' ' && s[i] != '\t') return 0;
+	return k >= 3;
+}
+
+/* an opening code fence at line l of t: up to 3 blanks, 3 or more ` or
+   ~, and for ` no ` after them (CommonMark's info string: "```x``` y" is
+   a paragraph with inline code, measured in test_lsp_locs) */
+static int fence(const Text *t, size_t l)
+{
+	char s[64], c = 0;
+	size_t a = text_line_start(t, l), z = text_line_start(t, l + 1), lead = 0, run = 0;
+	int past = 0;
+	for (size_t n; a < z; a += n) {
+		text_read(t, a, s, n = z - a < sizeof s ? z - a : sizeof s);
+		for (size_t j = 0; j < n; j++)
+			if (!c && s[j] == ' ' && lead < 3) lead++;
+			else if (!c && (s[j] == '`' || s[j] == '~')) c = s[j], run = 1;
+			else if (!c) return 0;
+			else if (!past && s[j] == c) run++;
+			else if (run < 3) return 0;
+			else if ((past = 1) && c == '`' && s[j] == '`') return 0;
+	}
+	return run >= 3;
+}
+
+/* _make_floating_popup_size(): the widest line, at most the current
+   window's width cw; the rows its lines take wrapped at cw */
+static int pop_rows(size_t v, int cw) { return v > (size_t)cw ? (int)((v + (size_t)cw - 1) / (size_t)cw) : 1; }
+
+static int pop_size(Win *p, int cw, int *rows)
+{
+	size_t wd = 0, n = buf_lines(p->buf);
+	*rows = 0;
+	for (size_t l = 0; l < n; l++) {
+		size_t v = win_vcol_end(p, l);
+		if (v > wd) wd = v;
+		*rows += pop_rows(v, cw);
+	}
+	return wd < (size_t)cw ? (int)wd : cw;
+}
+
+void core_float(Editor *e, const char *s, size_t n, int md)
+{
+	Win *p = e->pop, *w = e->win;
+	if (p) {
+		syntax_free(p->buf->syn);
+		text_free(p->buf->text);
+		free(p->buf);
+		free(p);
+		e->pop = NULL;
+	}
+	if (!s) return;
+	/* vim.split(.., '\n', { trimempty = true }), then (Markdown)
+	   _normalize_markdown(): blank lines in a row become the first,
+	   a thematic break the divider, the width of the widest line before,
+	   without the blank lines around it */
+	while (n && s[0] == '\n') s++, n--;
+	while (n && s[n - 1] == '\n') n--;
+	size_t nl = 1, k = 0, m = 0;
+	for (size_t i = 0; i < n; i++) nl += s[i] == '\n';
+	size_t *at = malloc(2 * nl * sizeof *at);   /* each line's start and end */
+	char *o = malloc(n + 1 + nl * (3 * (size_t)(w->w > 0 ? w->w : 0) + 1));
+	p = calloc(1, sizeof *p);
+	Buf *b = calloc(1, sizeof *b);
+	if (o) memcpy(o, s, n), o[n] = '\n';
+	if (!at || !o || !p || !b || !(b->text = text_new(o, n + 1))) { free(at); free(o); free(p); free(b); return; }
+	at[0] = 0;
+	for (size_t i = 0; i <= n; i++)
+		if (i == n || s[i] == '\n') {
+			at[2 * k + 1] = i;
+			if (++k < nl) at[2 * k] = i + 1;
+		}
+	p->buf = b;
+	b->nonumber = 1;
+	int width = pop_size(p, w->w, &(int){ 0 }), height;
+#define BLANK(l) blank_line(s + at[2 * (l)], at[2 * (l) + 1] - at[2 * (l)])
+	if (md) {
+		/* collapse_blank_lines(), then replace_separators() on its lines */
+		for (size_t l = 0, j = 0; l < nl; l++, j++) {
+			at[2 * j] = at[2 * l], at[2 * j + 1] = at[2 * l + 1];
+			if (BLANK(j)) while (l + 1 < nl && BLANK(l + 1)) l++;
+			k = j + 1;
+		}
+		size_t last = 0;   /* where the last line written starts */
+		for (size_t l = 0; l < k; l++) {
+			const char *t = s + at[2 * l];
+			size_t tn = at[2 * l + 1] - at[2 * l];
+			if (separator(t, tn)) {
+				if (l > 0 && BLANK(l - 1)) m = last;
+				last = m;
+				for (int c = 0; c < width; c++) memcpy(o + m, "\xe2\x94\x80", 3), m += 3;
+				if (l + 1 < k && BLANK(l + 1)) l++;
+			} else {
+				last = m;
+				memcpy(o + m, t, tn);
+				m += tn;
+			}
+			o[m++] = '\n';
+		}
+#undef BLANK
+		text_delete(b->text, 0, text_len(b->text));
+		text_insert(b->text, 0, o, m);
+		b->syn = syntax_open("float.md", b->text);
+		/* parsed now, then its injections (the C of a fenced block, the
+		   inline grammar), which are parsed where faces were asked for */
+		unsigned char f[1024];
+		syntax_update(b->syn, b->text, NULL, &(size_t){ 0 }, &(size_t){ 0 });
+		for (size_t a = 0; a < m; a += sizeof f) syntax_faces(b->syn, a, a + sizeof f < m ? a + sizeof f : m, f);
+		while (syntax_update(b->syn, b->text, NULL, &(size_t){ 0 }, &(size_t){ 0 })) ;
+		p->conceal = 2;
+	}
+	free(at);
+	free(o);
+	p->wrap = 1;
+	width = pop_size(p, w->w, &height);
+	int fits = (size_t)height == buf_lines(b);
+	/* make_floating_popup_options(): below the cursor when more lines are
+	   there than above it, left-aligned to it when the screen is wide
+	   enough from the window's column (wincol() against 'columns', as
+	   there); then the compositor keeps it on the screen, above the
+	   command line (win_float_update_position()) */
+	core_update(e);
+	win_drawn(e);
+	int wrow = w->frame->s.wrow, wcol = w->frame->s.wcol, below = w->h - wrow > wrow;
+	int room = below ? w->h - wrow : wrow;
+	p->h = height < room ? height : room;
+	p->w = width;
+	p->lbr = 1;
+	/* then (Markdown) fewer rows if the text takes fewer
+	   (nvim_win_text_height(), 'linebreak' and 'breakindent' on), twice:
+	   open_floating_preview() without the fence lines the TS highlighter's
+	   conceal_lines hides (also of the blocks render-markdown skips, which
+	   syntax_md() does not give; win_text_height()'s max_height stops
+	   at the rows the window holds, which changes nothing here: a height
+	   that reaches p->h keeps it), but only before render-markdown first attached (ts.init() turns them off
+	   for good); then render-markdown's fix_lsp_window() without those
+	   code.lua hides (border "hide": a closing fence, an opening one
+	   without a language) of the blocks starting in its view (env.range():
+	   the window's lines and 20 more) */
+	SyntaxMd d;
+	for (int pass = rm_attached; md && pass < 2; pass++) {
+		height = 0;
+		for (size_t l = 0, o = 0, v = (size_t)p->h + 20; l < buf_lines(b); l++) {
+			int c = syntax_md(b->syn, b->text, l, &d) ? d.code : 0;
+			o = c == 1 ? l : o;
+			if (!(pass ? (c == 3 && o < v) || (c == 1 && !d.nlang && l < v) : (c == 1 || c == 3 || (!c && fence(b->text, l)))))
+				height += pop_rows(win_vcol_end(p, l), width);
+		}
+		if (height < p->h) p->h = height;
+	}
+	rm_attached |= md;
+	p->wrap = !(md && fits);   /* and 'wrap' off when no line is wider than the window */
+	p->y = below ? w->y + wrow + 1 : w->y + wrow - p->h;
+	p->x = wcol + 1 + width <= e->cols ? w->x + wcol : w->x + wcol + 1 - width;
+	if (p->y > e->rows - 1 - p->h) p->y = e->rows - 1 - p->h;
+	if (p->x > e->cols - p->w) p->x = e->cols - p->w;
+	if (p->y < 0) p->y = 0;
+	if (p->x < 0) p->x = 0;
+	e->pop = p;
+	core_popat = (struct PopAt){ w, w->line, w->col };
+	core_changed = 1;
+}
+
 /* Loads path into b, a buffer without text (path NULL: empty, no name).
    -1 on error, msg set, b as it was. */
 /* Neovim's full name (fix_fname()), or the name as typed when it has none */
@@ -358,6 +583,8 @@ static int buf_load(Editor *e, Buf *b, const char *path)
 	}
 	free(data);
 	b->syn = path ? syntax_open(path, b->text) : NULL;
+	const char *ft = syntax_filetype(path);
+	rm_attached |= ft && !strcmp(ft, "markdown");
 	b->lsp = path ? lsp_open(path, b->text) : NULL;
 	b->faces = b->lsp ? lsp_faces : NULL;   /* the server's semantic tokens over the grammar's */
 	undo_hook(u, undo_seen, b);
@@ -559,6 +786,8 @@ int core_open(Editor *e, const char *path)
 
 void core_free(Editor *e)
 {
+	core_float(e, NULL, 0, 0);
+	rm_attached = 0;   /* (Neovim's process ends) */
 	for (int k = 0; k < 2; k++)
 		for (Buf *b = k ? unlisted : e->bufs, *nx; b; b = nx) { nx = b->next; buf_free(b); }
 	unlisted = NULL;

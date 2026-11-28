@@ -63,7 +63,18 @@ void lit_init(LineIt *it, const Buf *b, size_t l);
    count returned; 0 at the end of the line. */
 size_t lit_next(LineIt *it, const unsigned char **s);
 
+/* core_cellw() of the cluster s[0, k) at screen column v of the line it
+   reads (just past s), with w->lbr's 'linebreak' and 'breakindent'
+   (charsize_regular()): *head of the cells are breakindent's, before the
+   character; a blank where the next word does not fit fills the row.
+   b keeps what it needs of the line so far, { 0, 1, 0 } at its start */
+typedef struct { int ind, white, seen; } Lbr;
+int  lbr_cellw(const Win *w, Lbr *b, const LineIt *it, const unsigned char *s, size_t k, size_t v, int *head);
+
 size_t buf_lines(const Buf *b);
+/* where the current window's cursor was when core_float opened e->pop:
+   it closes once that changes (draw.c) */
+extern struct PopAt { const Win *w; size_t line, col; } core_popat;
 size_t win_vcol_end(const Win *w, size_t l);  /* screen width of line l in w (linetabsize) */
 /* The cursor's screen column in window w (getvvcol(): on a tab in normal
    mode, its last cell) and the start and end of the character. */
