@@ -19,8 +19,10 @@
 #include "db.h"
 #include "run.h"
 
-/* A connection as the connections file names it */
-typedef struct { char name[256], host[256], user[256], pass[256], db[256]; int pg, port, trust, alone; } Spec;   /* alone: the server, database - */
+/* A connection as the connections file names it; name/db holds a
+   database's name of 128 characters (SQL Server's sysname) at 4 bytes */
+enum { NAME = 256 + 4 * 128 + 1 };
+typedef struct { char name[NAME], host[256], user[256], pass[256], db[NAME]; int pg, port, trust, alone; } Spec;   /* alone: the server, database - */
 
 typedef struct {
 	int nr, res;            /* the query buffer, its results buffer (0 none yet) */
@@ -401,7 +403,8 @@ static int whole(Sess *s)
      name mssql|pg host[:port] user database [trust] [pass=...]
    (user - : the Windows login, SQL Server's from Windows; database - :
    the server alone, its default database), and name/db is name's with
-   database db
+   database db.  With all, every connection's name goes there, each ended by
+   a 0 (the picker's list), and o is not set
      dir folder name
    A password in the file makes it refused unless only its owner can read
    it (libpq's rule for ~/.pgpass).  0 found, -1 msg set. */
@@ -413,9 +416,9 @@ static int sep(char c) { return c == '\\' || c == '/'; }
 static int sep(char c) { return c == '/'; }
 #endif
 
-static int lookup(const char *name, const char *path, Spec *o)
+static int lookup(const char *name, const char *path, Spec *o, Str *all)
 {
-	char f[4096], l[1024], want[256] = "", *db = NULL;
+	char f[4096], l[1024], want[NAME] = "", *db = NULL;
 	size_t wn = 0;
 	file_stdpath(f, sizeof f, 2, "/sql");
 	FILE *fp = fopen(f, "r");
@@ -428,7 +431,7 @@ static int lookup(const char *name, const char *path, Spec *o)
 #endif
 	size_t best = 0;
 	snprintf(want, sizeof want, "%s", name);
-	for (int round = 0; round < 2; round++, rewind(fp)) {   /* the dir lines, then the connection */
+	for (int round = !!all; round < 2; round++, rewind(fp)) {   /* the dir lines, then the connection */
 		while (fgets(l, sizeof l, fp)) {
 			char a[5][256] = {{0}}, x[256] = "", pass[256] = "", *pw = l;
 			/* pass= comes last and takes the rest of the line, spaces too
@@ -450,7 +453,11 @@ static int lookup(const char *name, const char *path, Spec *o)
 				if (file_full(t, d)) snprintf(d, sizeof d, "%s", t);   /* the buffer's name's form (C:\ on Windows) */
 				size_t n = strlen(d);
 				if (path && n > best && !strncmp(path, d, n) && (sep(path[n]) || sep(d[n - 1]))) best = n, snprintf(want, sizeof want, "%s", a[2]);
-			} else if (round == 1 && k >= 5 && !strncmp(a[0], want, wn) && !a[0][wn] && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
+			} else if (round == 1 && k >= 5 && (all || (!strncmp(a[0], want, wn) && !a[0][wn])) && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
+				if (all) {
+					if (str_add(all, a[0], strlen(a[0]) + 1)) break;
+					continue;
+				}
 				*o = (Spec){ .pg = a[1][0] == 'p', .alone = !db && !strcmp(a[4], "-") };
 				memcpy(o->name, want, sizeof want);
 				/* host, host:port, [IPv6] or [IPv6]:port */
@@ -476,6 +483,7 @@ static int lookup(const char *name, const char *path, Spec *o)
 		if (round == 0) db = strchr(want, '/'), wn = db ? (size_t)(db++ - want) : strlen(want);
 	}
 	fclose(fp);
+	if (all) return 0;
 	if (*want) core_msg(E, "sql: no connection %s in %s", want, f);
 	else core_msg(E, "sql: no connection for this folder: :Connect name, or a dir line in %s", f);
 	return -1;
@@ -502,7 +510,7 @@ static int dial(Db *d, const Spec *c, void (*fn)(void *, int), void *ctx)
    connected window (SqlCat.tla) */
 typedef struct Cat {
 	struct Cat *next;
-	char name[256];
+	char name[NAME];
 	Db db;
 	int fd, st, pg;         /* its connection while it reads (-1 none); 0 not read, 1 logging in, 3 reading, 2 read, -1 failed */
 	Str cols, tabs;         /* the rows as schema\0table\0column\0 (the server sorted them); each table's first row's offset, as size_t */
@@ -525,7 +533,7 @@ static Cat *cat(const char *name, int make)
 	return c;
 }
 
-static char pickfor[256];   /* a server alone just picked: its databases, when read, open the picker again */
+static char pickfor[NAME];   /* a server alone just picked: its databases, when read, open the picker again */
 
 static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 {
@@ -536,7 +544,7 @@ static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 	c->fd = -1, c->st = st;
 	if (st != 2) c->cols.n = c->tabs.n = 0;
 	if (mine) *pickfor = 0;
-	if (mine && st > 0) tools_pick(E, PICK_SQL), core_changed = 1;
+	if (mine && st > 0 && !tools_term()) tools_pick(E, PICK_SQL), core_changed = 1;   /* the terminal took the keys meanwhile */
 }
 
 static void catwake(void *ctx, int fd)
@@ -708,7 +716,7 @@ static int run(Sess *s, size_t a, size_t z)
 {
 	Buf *b = core_buf_find(E, s->nr);
 	if (s->q.n) { core_msg(E, s->cancel ? "sql: the server has not answered the cancel yet" : "sql: a query is running (Ctrl-C or Alt+Break cancels)"); return -1; }
-	if (!s->spec.name[0] && lookup("", b->full, &s->spec)) return -1;
+	if (!s->spec.name[0] && lookup("", b->full, &s->spec, NULL)) return -1;
 	long bad = 0;
 	s->q.n = 0;
 	if (s->spec.pg) { SqlBatch one = { .a = a, .z = z, .count = 1 }; if (!(s->q.b = realloc(s->q.b, sizeof one))) return -1; s->q.b[0] = one, s->q.n = 1; }
@@ -781,12 +789,14 @@ int sql_connect(Editor *e, const char *name)
 	E = e;
 	Sess *s = sess(e->buf->nr, name && *name);
 	if (!name || !*name) return tools_pick(e, PICK_SQL);
-	char nm[300];
-	snprintf(nm, sizeof nm, "%.*s", (int)strcspn(name, " "), name);   /* a picker item's mark cut */
+	char nm[NAME];
+	size_t n = strlen(name);
+	n -= n > 4 && !strcmp(name + n - 4, " \xe2\x9c\x93") ? 4 : 0;   /* a picker item's mark: a database's name may hold spaces */
+	snprintf(nm, sizeof nm, "%.*s", (int)n, name);
 	name = nm;
 	if (!s) { core_msg(e, "sql: out of memory"); return -1; }
 	Spec c;
-	if (lookup(name, NULL, &c)) return -1;
+	if (lookup(name, NULL, &c, NULL)) return -1;
 	Cat *k = cat(name, 0);
 	if (k) uncat(k, 0);   /* read again at its next login: the file may name another server now */
 	drop(s);
@@ -815,7 +825,7 @@ static Sess *conn(const Buf *b)
 	Spec c;
 	if (s && !s->spec.name[0] && !s->looked) {
 		memcpy(m, E->msg, sizeof m);
-		if (!lookup("", b->full, &c)) s->spec = c;
+		if (!lookup("", b->full, &c, NULL)) s->spec = c;
 		memcpy(E->msg, m, sizeof m);
 		s->looked = 1;
 	}
@@ -827,7 +837,7 @@ static int up(const Sess *s) { return s->fd >= 0 && db_state(&s->db) >= DB_READY
 /* name, and " ✓" while live: the picker's and the status line's one mark */
 static const char *marked(const char *name, int live)
 {
-	static char m[300];
+	static char m[NAME + 4];
 	return live ? (snprintf(m, sizeof m, "%s \xe2\x9c\x93", name), m) : name;
 }
 
@@ -846,21 +856,19 @@ const char *sql_pick(Editor *e, int i, int *live)
 	static size_t at, n;   /* item n is at items.s + at: the picker asks in order */
 	E = e;
 	if (!i) {
-		char f[4096], l[1024], a[2][256], d[600];
-		file_stdpath(f, sizeof f, 2, "/sql");
-		FILE *fp = fopen(f, "r");
-		items.n = at = n = 0;
-		while (fp && fgets(l, sizeof l, fp))
-			if (sscanf(l, "%255s %255s", a[0], a[1]) == 2 && (!strcmp(a[1], "mssql") || !strcmp(a[1], "pg"))) {
-				size_t an = strlen(a[0]);
-				Cat *k = C;
-				while (k && (k->st != 2 || strncmp(k->name, a[0], an) || (k->name[an] && k->name[an] != '/'))) k = k->next;
-				if (str_add(&items, a[0], an + 1)) break;
-				const size_t *o = k ? (const void *)k->tabs.s : NULL;
-				for (size_t j = 0, nt = k ? k->tabs.n / sizeof *o : 0; j < nt && !k->cols.s[o[j]]; j++)
-					if (str_add(&items, d, (size_t)snprintf(d, sizeof d, "%s/%s", a[0], k->cols.s + o[j] + 1) + 1)) break;
-			}
-		if (fp) fclose(fp);
+		static Str names;
+		char d[NAME];
+		items.n = at = n = names.n = 0;
+		if (lookup("", NULL, NULL, &names)) return NULL;
+		for (const char *a = names.s, *z = a + names.n; a < z; a += strlen(a) + 1) {
+			size_t an = strlen(a);
+			Cat *k = C;
+			while (k && (k->st != 2 || strncmp(k->name, a, an) || (k->name[an] && k->name[an] != '/'))) k = k->next;
+			if (str_add(&items, a, an + 1)) break;
+			const size_t *o = k ? (const void *)k->tabs.s : NULL;
+			for (size_t j = 0, nt = k ? k->tabs.n / sizeof *o : 0; j < nt && !k->cols.s[o[j]]; j++)
+				if (str_add(&items, d, (size_t)snprintf(d, sizeof d, "%s/%.512s", a, k->cols.s + o[j] + 1) + 1)) break;
+		}
 	}
 	for (; n < (size_t)i && at < items.n; n++) at += strlen(items.s + at) + 1;
 	if (n != (size_t)i || at >= items.n) return NULL;
