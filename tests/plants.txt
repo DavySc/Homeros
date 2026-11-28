@@ -1192,3 +1192,5 @@ front | dbg/eval.c | P.entry = scope && !scope->parent && | P.entry = scope &&
 eval | dbg/eval.c | before += y->flags & 1; | before += 2;
 # SQLite's /JMC build: the nop behind the helper's call lies under the made-up line too (traces-vs/sql_jmc.into.txt, step 34)
 engine | dbg/engine.c | (theirs(e, ev.addr) \p\p (m && rdi_row(&m->rdi, ev.addr - m->image.base).line.line == 0xf00f00))); | theirs(e, ev.addr));
+front | cmd/hdbg.c | { return which == CTRL_C_EVENT; } | { return which != CTRL_C_EVENT; }
+front | dbg/engine.c | {0x40010005 /* control-C */,  | {

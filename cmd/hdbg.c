@@ -8,7 +8,8 @@
      l   r   p <e>   x <e>       the frame's variables, its registers, an expression, an expression with its parts
      m <e>                       64 bytes of the program's memory where the expression points
      w <place> = <e>             write the expression's value to a variable (or a member, an element, what a pointer points at)
-     q                           end the program */
+     q                           end the program
+   Ctrl+C stops the program where it runs (it comes as an exception, 0x40010005, which the program then never sees). */
 #include "../dbg/ask.h"
 #include "../dbg/session.h"
 #include <stdio.h>
@@ -24,6 +25,7 @@ static char conditions[64][128];
 static uint32_t count, thread, frame;
 static bool alive;
 
+static BOOL WINAPI key(DWORD which) { return which == CTRL_C_EVENT; }   /* Ctrl+C is the program's to stop at (dbg/engine.c, at_once), not this one's end */
 static void wake(void *arg) { (void)arg, SetEvent(woke); }
 static void push(const void *m, size_t n) { if (!queue_push(&s.commands, m, (uint32_t)n, false)) abort(); }   /* one command at a time: there is room */
 
@@ -108,6 +110,7 @@ int main(int argc, char **argv)
   for (int i = 1; i < argc; i += 1) used += (size_t)snprintf(m.text + used, used < sizeof m.text ? sizeof m.text - used : 0, i > 1 ? " %s" : "%s", argv[i]);
   if (used == 0 || used >= 1000) return fputs("usage: hdbg <command line>\n", stderr), 2;
   woke = CreateEventA(NULL, FALSE, FALSE, NULL);
+  SetConsoleCtrlHandler(key, TRUE);
   session_start(&s, wake, NULL);
   push(&m, sizeof m.c + used + 1);
   const SessionEvent *ev = take(INFINITE);

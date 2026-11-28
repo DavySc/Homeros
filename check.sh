@@ -114,6 +114,9 @@ for l in open(sys.argv[1] + "/tests/plants.txt"):
     (cd "$b" && ! WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe nothing.exe < /dev/null >/dev/null 2>&1) || return 1
     # a block with a variable of its own begins a scope inside the function: at its first instruction a parameter is in the frame, not where the caller put it (MSVC's unoptimised build of subjects/recur.c)
     (cd "$b" && cp "$OLDPWD"/rdi/recur.exe "$OLDPWD"/rdi/recur.pdb . && [ "$(printf 'c\nb recur.c:14\nb recur.c:10\nc\np n\nc\np n\nq\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./hdbg.exe recur.exe 2>/dev/null | tr -d '\r' | grep -c '^n = 0 ')" = 2 ]) || return 1
+    # the halt key: Ctrl+C on the console the two share (tests/key.c presses it; tests/console.c keeps it from this check) stops the program, which then runs on to its end without having seen it
+    ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/key.c -o "$b/key.exe" && ${WINCC:-x86_64-w64-mingw32-gcc} -std=c17 -Wall -Wextra -Werror "$src"/tests/console.c -o "$b/console.exe" || return 2
+    (cd "$b" && [ "$(printf 'c\nc\nc\n' | WINEDEBUG=-all timeout 120 "${WINE:-wine}" ./console.exe ./hdbg.exe key.exe 2>/dev/null | tr -d '\r' | grep -c -x 'exception 0x40010005\|ended with 0x3')" = 2 ]) || return 1
   fi
   if [ "$what" = fuzz ] || [ "$what" = all ]; then
     for f in "$src"/tests/fuzz_*.c; do
