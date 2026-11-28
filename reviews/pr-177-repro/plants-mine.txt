@@ -1,0 +1,5 @@
+mine 1: a refresh asks at once, without the 200 ms~test TESTS=lsp~~src/lsp/lsp.c~loop_timer(retoken, d, 200);~loop_timer(retoken, d, 0);
+mine 2: a refresh leaves the request in flight uncancelled~test TESTS=lsp~~src/lsp/lsp.c~cancel(d, &d->tokid), loop_timer(retoken, d, 200);~loop_timer(retoken, d, 200);
+mine 3: a refresh asks 5 s late~test TESTS=lsp~~src/lsp/lsp.c~loop_timer(retoken, d, 200);~loop_timer(retoken, d, 5000);
+mine 4: a refresh asks only its first file again~test TESTS=lsp~~src/lsp/lsp.c~for (LspDoc *d = s->docs; d; d = d->link) cancel(d, &d->tokid), loop_timer(retoken, d, 200);~{ LspDoc *d = s->docs; cancel(d, &d->tokid), loop_timer(retoken, d, 200); }
+mine 5: empty tokens dropped again~test TESTS=lsp~~src/lsp/lsp.c~		d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };~		if (a < z) d->tok.v[d->tok.n++] = (LspDiag){ a, z, z, d->s->legend[v[3]], NULL };
