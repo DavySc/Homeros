@@ -17,6 +17,10 @@ cat "$work/psql.txt"
 grep -q -x 'breakpoint' "$work/hdbg.txt" || { echo "pg: no stop at the breakpoint"; exit 1; }
 grep -q '^#0 .* ExecutorRun  postgres.exe' "$work/hdbg.txt" || { echo "pg: the stop is not in ExecutorRun"; exit 1; }
 grep -q '^#[0-9]* .* exec_simple_query  postgres.exe' "$work/hdbg.txt" || { echo "pg: the stack does not reach exec_simple_query"; exit 1; }
+# what it shows there is what the session asked: the statement's kind and text in the executor's own structure, and one row processed
+grep -q -x 'queryDesc->operation = CMD_SELECT (1)  (CmdType)' "$work/hdbg.txt" || { echo "pg: the statement's kind is not shown"; exit 1; }
+grep -q '^\*queryDesc = {CMD_SELECT (1), 0x[0-9a-f]*, 0x[0-9a-f]* "select count(\*) + 1000000 from pg_class"' "$work/hdbg.txt" || { echo "pg: the statement's text is not shown"; exit 1; }
+grep -q -x '\$ReturnValue = 1  (unsigned long long)' "$work/hdbg.txt" || { echo "pg: PortalRunSelect's count of rows is not shown"; exit 1; }
 [ "$(tail -n 1 "$work/psql.txt" | tr -d '\r')" -gt 1000000 ] || { echo "pg: the query's answer is missing"; exit 1; }
 [ "$(psql -X -At -c 'select 41 + 1' | tr -d '\r')" = 42 ] || { echo "pg: the server is gone"; cat "$work/log.txt"; exit 1; }
 pg_ctl -D "$work/data" -w stop
