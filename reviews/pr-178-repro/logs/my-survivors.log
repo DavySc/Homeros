@@ -1,0 +1,42 @@
+review: subsup: no * script                                                              NOT CAUGHT
+review: entity: \_ and over 20 spaces                                                    NOT CAUGHT
+review: latex: $ closing after a blank                                                   NOT CAUGHT
+review: line break after a backslash                                                     NOT CAUGHT
+review: snippet: no - in a back end's name                                               NOT CAUGHT
+review: macro: no _ in a name                                                            NOT CAUGHT
+review: target: may end in a blank                                                       NOT CAUGHT
+review: inline call: no end header                                                       NOT CAUGHT
+review: under before sub swapped                                                         NOT CAUGHT
+review: timestamp before link swapped at <                                               NOT CAUGHT
+review: lex: the one-character radio link before PT again                                NOT CAUGHT
+review: at_point: into a list or a table at its first character                          NOT CAUGHT
+review: tags of one colon pair                                                           NOT CAUGHT
+review: context: COMMENT part of the title                                               NOT CAUGHT
+review: item tag: checkbox part of the tag                                               NOT CAUGHT
+review: item tag: counter part of the tag                                                NOT CAUGHT
+review: headline holds line breaks                                                       NOT CAUGHT
+review: context: into contents at their end after a blank                                NOT CAUGHT
+review: radio words not over a line end                                                  NOT CAUGHT
+review: radio search: any <<<words>>>                                                    NOT CAUGHT
+review: footnote: allow-reference-p at a line's start                                    NOT CAUGHT
+review: path: blanks before a newline kept                                               NOT CAUGHT
+review: unescape: backslashes not halved                                                 NOT CAUGHT
+review: ~x a file                                                                        NOT CAUGHT
+review: file:///x keeps its slashes                                                      NOT CAUGHT
+review: file://c:/x keeps its slashes                                                    NOT CAUGHT
+review: ftp. not guessed                                                                 NOT CAUGHT
+review: url: trailing punctuation kept                                                   NOT CAUGHT
+review: url: a bare scheme is a url                                                      NOT CAUGHT
+review: url: leading non-alphanumerics kept                                              NOT CAUGHT
+review: email: a domain may start with a dot                                             NOT CAUGHT
+review: global: last line without a newline not counted                                  NOT CAUGHT
+review: global: range's second date not on                                               caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+review: radio targets in text order                                                      NOT CAUGHT
+review: radio targets not reversed                                                       NOT CAUGHT
+review: radio match: blanks only                                                         NOT CAUGHT
+review: radio link inside a word's end                                                   NOT CAUGHT
+review: custom id: a prefix matches                                                      NOT CAUGHT
+review: NAME: cookies separate words                                                     NOT CAUGHT
+review: fuzzy *heading also finds targets                                                NOT CAUGHT
+review: priority of any length                                                           NOT CAUGHT
+review: uri: the parser's description stops at its container (X)                         NOT CAUGHT

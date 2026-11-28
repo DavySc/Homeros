@@ -1,0 +1,37 @@
+--- src/org/org.c	2026-11-28 06:22:41.413011580 +0000
++++ src/org/org.c	2026-11-28 07:10:36.082565852 +0000
+@@ -2949,18 +2949,6 @@
+ 	}
+ 	return par;
+ }
+-/* [ \t]+\(:[[:alnum:]_@#%:]+:\) then [ \t]*$, or [ \t]*$, at q: the tags'
+-   [*ga, *gz) (ORG_NONE when none) */
+-static int tail(size_t q, size_t *ga, size_t *gz)
+-{
+-	size_t b = blanks(q), x = b + 1;
+-	*ga = *gz = ORG_NONE;
+-	if (ateol(b)) return 1;
+-	if (b == q || S[b] != ':') return 0;
+-	while (x < N && (one(x, ":_@#%") || anum(x))) x = nextc(x);
+-	if (x < b + 3 || S[x - 1] != ':' || !ateol(blanks(x))) return 0;
+-	return *ga = b, *gz = x, 1;
+-}
+ /* org-complex-heading-regexp on the headline h, case matters: the title
+    (match 4) in [*a, *z) and the tags (match 5) in [*ga, *gz), ORG_NONE
+    when none */
+@@ -2977,10 +2965,11 @@
+ 		}
+ 		if (step < 2 && is(r, " ") && is(s = spaces(r), "[#") && s + 3 < N && S[s + 2] != '\n' && S[s + 3] == ']') r = s + 4;
+ 		else if (step == 1) continue;
+-		if (tail(r, ga, gz)) return;   /* (?: +\(.*?\))?? takes nothing when it can */
+-		if (!is(r, " ")) continue;
+-		for (s = spaces(r), r = s; !tail(r, ga, gz); r = nextc(r)) ;
+-		*a = s; *z = r;
++		*ga = tags(r, eol(r), &k);   /* the tags, and where the blanks before them (or the line's end) start */
++		*gz = *ga == ORG_NONE ? ORG_NONE : k;
++		for (k = *ga == ORG_NONE ? k : *ga; k > r && blank(k - 1); k--) ;
++		if (k > r && !is(r, " ")) continue;
++		if (k > r) *a = spaces(r), *z = k;   /* (?: +\(.*?\))?? takes nothing when it can */
+ 		return;
+ 	}
+ }

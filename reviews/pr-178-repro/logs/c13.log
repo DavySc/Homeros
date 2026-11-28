@@ -1,0 +1,211 @@
+/home/claude/Homeros/rv/fail/c13-t00018.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00033.org 
+  org:  b'116 error No match for fuzzy expression: a'
+  ours: b'116 error No link found'
+/home/claude/Homeros/rv/fail/c13-t00059.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00088.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00093.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00101.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00111.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00159.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00183.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00203.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00215.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00220.org 
+  org:  b'133 goto 64'
+  ours: b'133 goto 168'
+/home/claude/Homeros/rv/fail/c13-t00232.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00233.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00289.org 
+  org:  b'350 goto 65'
+  ours: b'350 goto 715'
+/home/claude/Homeros/rv/fail/c13-t00332.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00379.org 
+  org:  b'417 goto 64'
+  ours: b'417 goto 282'
+/home/claude/Homeros/rv/fail/c13-t00388.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00413.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00414.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00436.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00438.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00450.org 
+  org:  b'237 goto 64'
+  ours: b'237 goto 1005'
+/home/claude/Homeros/rv/fail/c13-t00459.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00472.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00491.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00503.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00511.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00517.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00570.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00572.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00604.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00626.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00627.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00631.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00688.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00720.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00730.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00739.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00751.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00760.org 
+  org:  b'51 error No match for fuzzy expression: a'
+  ours: b'51 error No link found'
+/home/claude/Homeros/rv/fail/c13-t00800.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00853.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00915.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00955.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t00981.org 
+  org:  b'421 goto 68'
+  ours: b'421 goto 154'
+/home/claude/Homeros/rv/fail/c13-t00985.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01026.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01050.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01095.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01112.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01138.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01143.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01165.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01171.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01220.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01236.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01237.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01250.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01339.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01344.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01345.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01348.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01352.org 
+  org:  b'484 goto 64'
+  ours: b'484 goto 527'
+/home/claude/Homeros/rv/fail/c13-t01403.org 
+  org:  b'127 goto 65'
+  ours: b'127 goto 561'
+/home/claude/Homeros/rv/fail/c13-t01423.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01444.org 
+  org:  b'293 error No match for fuzzy expression: a'
+  ours: b'293 error No link found'
+/home/claude/Homeros/rv/fail/c13-t01445.org 
+  org:  b'405 error No link found'
+  ours: b'405 offer'
+/home/claude/Homeros/rv/fail/c13-t01496.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/c13-t01497.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+c seed 13: 70 of 1500 differ (and 4 only when Org is asked in a row, 16 Org's stale tags match)

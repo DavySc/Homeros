@@ -1,0 +1,69 @@
+review: emph: no { before a marker§org-conform ORG_N=2000 SEED=1§§src/org/org.c§one(p - 1, "-('\"{")§one(p - 1, "-('\"")
+review: subsup: no * script§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	if (one(q, "*")) return obj(o, t, p, q + 1, q, q + 1);¶§
+review: entity: \_ and over 20 spaces§org-conform ORG_N=2000 SEED=1§§src/org/org.c§<= 20 && obj(o, O_ENTITY§<= 2000 && obj(o, O_ENTITY
+review: latex: $ closing after a blank§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	         !one(m - 2, " \t\n,.") && (ateol(m)§	         (ateol(m)
+review: line break after a backslash§org-conform ORG_N=2000 SEED=1§§src/org/org.c§|| (p > LO && S[p - 1] == '\\')) return 0;§) return 0;
+review: snippet: no - in a back end's name§org-conform ORG_N=2000 SEED=1§§src/org/org.c§while (ascii_alnum(x) || one(x, "-")) x++;¶	return x > p + 2§while (ascii_alnum(x)) x++;¶	return x > p + 2
+review: macro: no _ in a name§org-conform ORG_N=2000 SEED=1§§src/org/org.c§while (ascii_alnum(x) || one(x, "-_")) x++;§while (ascii_alnum(x) || one(x, "-")) x++;
+review: target: may end in a blank§org-conform ORG_N=2000 SEED=1§§src/org/org.c§return is(r, ">>") && !one(r - 1, " \t") ? r : 0;§return is(r, ">>") ? r : 0;
+review: cookie: no [n/m]§org-conform ORG_N=2000 SEED=1§§src/org/org.c§return is(x, "/") && is(x = digits(x + 1, N), "]") && obj(o, O_COOKIE, p, x + 1, ORG_NONE, 0);§return 0;
+review: footnote: an inline one holds no objects§org-conform ORG_N=2000 SEED=1§§src/org/org.c§return S[x - 1] == ':' ? obj(o, O_FN, p, c, x, c - 1) : obj(o, O_FN, p, c, ORG_NONE, 0);§return obj(o, O_FN, p, c, ORG_NONE, 0);
+review: inline call: no end header§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	if (t == O_CALL && is(x, "[") && (y = pair(x, '[', ']')) != ORG_NONE) x = y;¶§
+review: inline: no \< before§org-conform ORG_N=2000 SEED=1§§src/org/org.c§"src_") || !wstart(p)) return 0;§"src_")) return 0;
+review: citation: no style§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (y > x + 1) x = y; }§}
+review: under before sub swapped§org-conform ORG_N=2000 SEED=1§§src/org/org.c§return (OK(O_UNDER) && emph(p, O_UNDER, o)) || (OK(O_SUB) && subsup(p, O_SUB, o));§return (OK(O_SUB) && subsup(p, O_SUB, o)) || (OK(O_UNDER) && emph(p, O_UNDER, o));
+review: timestamp before link swapped at <§org-conform ORG_N=2000 SEED=1§§src/org/org.c§: (OK(O_TS) && ts_o(p, o)) || (OK(O_LINK) && link(p, o));§: (OK(O_LINK) && link(p, o)) || (OK(O_TS) && ts_o(p, o));
+review: entity before latex swapped§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(OK(O_ENTITY) && entity_o(p, o)) || (OK(O_LATEX) && latex(p, o));§(OK(O_LATEX) && latex(p, o)) || (OK(O_ENTITY) && entity_o(p, o));
+review: lex: the one-character radio link before PT again§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if ((x = radio_search(from, &a, &z)) != ORG_NONE && PT == nextc(bol(from)) && PT == z)§if ((x = radio_search(from, &a, &z)) != ORG_NONE && 0)
+review: at_point: into a list or a table at its first character§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(e->cbeg == pos && e->type != ORG_PLAIN_LIST && e->type != ORG_TABLE)§(e->cbeg == pos)
+review: tags of one colon pair§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (x < b + 3 || S[x - 1] != ':'§if (x < b + 2 || S[x - 1] != ':'
+review: context: COMMENT part of the title§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		a += 7 * is(a, "COMMENT");¶§
+review: item tag: checkbox part of the tag§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	if (is(x, "[") && one(x + 1, " X-") && is(x + 2, "]") && (blank(x + 3) || ateol(x + 3))) x = blanks(x + 3);¶§
+review: item tag: counter part of the tag§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		if (y > x + 2 && is(y, "]")) x = blanks(y + 1);§;
+review: caption holds footnotes§org-conform ORG_N=2000 SEED=1§§src/org/org.c§r = R_STD & ~BIT(O_FN);§r = R_STD;
+review: headline holds line breaks§org-conform ORG_N=2000 SEED=1§§src/org/org.c§LO = a; N = z; r = R_STD & ~BIT(O_BREAK);¶	} else if (e->type == ORG_PARAGRAPH§LO = a; N = z; r = R_STD;¶	} else if (e->type == ORG_PARAGRAPH
+review: context: into contents at their end after a blank§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(pos < o.ce || (pos == o.ce && (pos == N || !one(pos - 1, " \t"))))§(pos <= o.ce)
+review: radio words not over a line end§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (sep == 2 && y > x && is(y, "\n")) y = blanks(y + 1); }§}
+review: coderef in any element§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(PE[k].type == ORG_SRC_BLOCK || PE[k].type == ORG_EXAMPLE_BLOCK)§1
+review: fuzzy: COMMENT part of a heading's words§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		if (is(a, "COMMENT") && one(a + 7, " \t")) a = blanks(a + 7);¶§
+review: radio search: any <<<words>>>§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (c && OB[c - 1].t == O_RADIO) return say§if (c) return say
+review: footnote: new on the last character§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if ((c || EL != ORG_NONE) && pos > ctx_end(c))§if ((c || EL != ORG_NONE) && pos >= ctx_end(c))
+review: footnote: anonymous stays§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (la == lz) return say(o, ORG_OPEN_GOTO, OB[c - 1].cb,§if (la == lz) return say(o, ORG_OPEN_GOTO, pos,
+review: footnote: reference searched forward only§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	for (size_t b = pos; b >= lz - la + 5; b--)§	for (size_t b = 0; b >= lz - la + 5; b--)
+review: footnote: allow-reference-p at a line's start§org-conform ORG_N=2000 SEED=1§§src/org/org.c§int ok = !bolp(pos) && (pos == ctx_end(c)§int ok = (pos == ctx_end(c)
+review: path: blanks before a newline kept§org-conform ORG_N=2000 SEED=1§§src/org/org.c§			while (k > m && (Q[k - 1] == ' ' || Q[k - 1] == '\t')) k--;¶§
+review: unescape: backslashes not halved§org-conform ORG_N=2000 SEED=1§§src/org/org.c§k /= 2, memset(w, '\\', k)§memset(w, '\\', k)
+review: ~x a file§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(*Q == '~' && (!Q[1] || Q[1] == '/'))§(*Q == '~')
+review: file:///x keeps its slashes§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		else if (sl >= 3) path += sl - 1;¶§
+review: file://c:/x keeps its slashes§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		if (sl >= 2 && sl + 2 < pl && path[sl + 1] == ':' && path[sl + 2] == '/') path += sl;¶		else if§		if
+review: file+sys a link§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(t > 4 && (Q[4] != '+' || t == 5))§(t > 4)
+review: ftp. not guessed§org-conform ORG_N=2000 SEED=1§§src/org/org.c§lit(a, "ftp.") ? "ftp://" :§0 ? "ftp://" :
+review: url: trailing punctuation kept§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	while (e > pos && one(e - 1, ":;.,!?'")) e--;¶§
+review: url: a bare scheme is a url§org-conform ORG_N=2000 SEED=1§§src/org/org.c§				if (m == e) return NULL;¶§
+review: url: leading non-alphanumerics kept§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	while (b < pos && !ascii_alnum(b)) b = nextc(b);¶§
+review: email: a domain may start with a dot§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(q > p && is(q, "."))§is(q, ".")
+review: email: 5 characters around§org-conform ORG_N=2000 SEED=1§§src/org/org.c§for (lo = pos, k = 500; k-- && lo > 0; )§for (lo = pos, k = 5; k-- && lo > 0; )
+review: global: last line without a newline not counted§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	k += x == N && N && S[N - 1] != '\n';¶§
+review: global: range's second date not on§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (pos <= z || (k > 1 && (z = ts_both(z + k)) != ORG_NONE && pos <= z)) return§if (pos <= z) return
+review: radio targets in text order§org-conform ORG_N=2000 SEED=1§§src/org/org.c§		for (j = i; j > 0 && RT[j][1] - RT[j][0] > RT[j - 1][1] - RT[j - 1][0]; j--)§		for (j = i; 0 && j > 0 && RT[j][1] - RT[j][0] > RT[j - 1][1] - RT[j - 1][0]; j--)
+review: radio targets not reversed§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	for (i = 0; i < rn / 2; i++) a = RT[i][0]§	for (i = 0; 0 && i < rn / 2; i++) a = RT[i][0]
+review: planning: anywhere after the date§org-conform ORG_N=2000 SEED=1§§src/org/org.c§on |= (z = ts_both(x)) != ORG_NONE && x <= pos && pos <= z;§on |= (z = ts_both(x)) != ORG_NONE && x <= pos;
+review: clock: never on§org-conform ORG_N=2000 SEED=1§§src/org/org.c§on = org_clock(s, n, &PE[el], &v, (size_t[2]){ 0 }) && pos >= v.begin && pos <= v.end;§on = 0;
+review: the blanks after a link follow it§org-conform ORG_N=2000 SEED=1§§src/org/org.c§else if (!k || pos >= ctx_end((int)k)) say§else if (!k) say
+review: a citation reference not followed§org-conform ORG_N=2000 SEED=1§§src/org/org.c§t == O_ISRC || t == O_CITE || t == O_REF) break;§t == O_ISRC || t == O_CITE) break;
+review: a keyword not global§org-conform ORG_N=2000 SEED=1§§src/org/org.c§t == ORG_NODE_PROPERTY || t == ORG_KEYWORD)) global(pos, o);§t == ORG_NODE_PROPERTY)) global(pos, o);
+review: radio target holds all objects§org-conform ORG_N=2000 SEED=1§§src/org/org.c§t == O_LINK ? R_LINK : t == O_RADIO ? R_MIN :§t == O_LINK ? R_LINK : t == O_RADIO ? R_STD :
+review: radio match: blanks only§org-conform ORG_N=2000 SEED=1§§src/org/org.c§			if (!sp(y)) return 0;¶			while (sp(y)) y = nextc(y);§			if (!blank(y)) return 0;¶			while (blank(y)) y = nextc(y);
+review: radio match: case matters§org-conform ORG_N=2000 SEED=1§§src/org/org.c§} else if (y < N && up(S[y]) == up(S[a])) y++, a++;§} else if (y < N && S[y] == S[a]) y++, a++;
+review: radio link inside a word's end§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if ((e = rmatch(y, i)) && (e >= N || !anum(e))) return§if ((e = rmatch(y, i))) return
+review: custom id: a prefix matches§org-conform ORG_N=2000 SEED=1§§src/org/org.c§lit(y = blanks(x + 11), q + 1) &&¶			    ateol(blanks(y + n - 1)) &&§lit(y = blanks(x + 11), q + 1) &&
+review: NAME: of another element's keyword§org-conform ORG_N=2000 SEED=1§§src/org/org.c§(k = at_point(eol(l))) == ORG_NONE || PE[k].begin > l || PE[k].aff <= l)§(k = at_point(eol(l))) == ORG_NONE)
+review: NAME: cookies separate words§org-conform ORG_N=2000 SEED=1§§src/org/org.c§if (words_are(a, z, 0)) return say(o, ORG_OPEN_GOTO, l,§if (words_are(a, z, 1)) return say(o, ORG_OPEN_GOTO, l,
+review: object end keeps its blanks§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	while (e > b && one(e - 1, " \t")) e--;¶	return e;¶}¶¶/* ---- the searches§	return e;¶}¶¶/* ---- the searches
+review: from_string: radio targets of this buffer§org-conform ORG_N=2000 SEED=1§§src/org/org.c§S = (const unsigned char *)t, N = m, RN = 0;§S = (const unsigned char *)t, N = m;
+review: fuzzy *heading also finds targets§org-conform ORG_N=2000 SEED=1§§src/org/org.c§	if (*q != '*') {¶		for (x = 0; x + 2 <= N; x++)§	if (1) {¶		for (x = 0; x + 2 <= N; x++)
+review: priority of any length§org-conform ORG_N=2000 SEED=1§§src/org/org.c§S[s + 2] != '\n' && S[s + 3] == ']') r = s + 4;§S[s + 3] == ']') r = s + 4;
+review: a table cell holds all objects§org-conform ORG_N=2000 SEED=1§§src/org/org.c§t == O_CELL ? R_CELL :§t == O_CELL ? R_STD :
+review: a link's description holds links§org-conform ORG_N=2000 SEED=1§§src/org/org.c§R_LINK = R_MIN | BIT(O_SNIP)§R_LINK = R_MIN | BIT(O_LINK) | BIT(O_SNIP)
+review: verse not read§org-conform ORG_N=2000 SEED=1§§src/org/org.c§e->type == ORG_PARAGRAPH || e->type == ORG_TABLE_ROW || e->type == ORG_VERSE_BLOCK) {§e->type == ORG_PARAGRAPH || e->type == ORG_TABLE_ROW) {
+review: uri: the parser's description stops at its container (X)§org-conform ORG_N=2000 SEED=1§§src/org/org.c§!(X && S[q] == '\n' && inside(q + 1)); q++)§!(S[q] == '\n' && inside(q + 1)); q++)

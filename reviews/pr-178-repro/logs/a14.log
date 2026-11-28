@@ -1,0 +1,13 @@
+/home/claude/Homeros/rv/fail/a14-t00366.org 
+  org:  b'84 link HTTPS //X.ORG _[[Lattice]]_* [[Hidden]]#+NAME: name** Lattice :tag:[[*Head one][the head]]+[[x]]+:PROPERTIES:[fn:2] <URL:ftp.x'
+  ours: b'84 error No link found'
+/home/claude/Homeros/rv/fail/a14-t00805.org 
+  org:  b'105 goto 64'
+  ours: b'105 goto 31'
+/home/claude/Homeros/rv/fail/a14-t00920.org 
+  org:  b'66 link http //x.org/a_(b)** head  one:PROPERTIES::CUSTOM_ID: cid:END:* Lattice :tag:SCHEDULED: <2026-11-27 Fri'
+  ours: b'66 error No link found'
+/home/claude/Homeros/rv/fail/a14-t01291.org 
+  org:  b'59 goto 64'
+  ours: b'59 goto 186'
+a seed 14: 4 of 1500 differ (and 2 only when Org is asked in a row, 6 Org's stale tags match)

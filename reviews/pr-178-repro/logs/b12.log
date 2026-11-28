@@ -1,0 +1,16 @@
+/home/claude/Homeros/rv/fail/b12-t00143.org 
+  org:  b'328 goto 64'
+  ours: b'328 goto 304'
+/home/claude/Homeros/rv/fail/b12-t00342.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+/home/claude/Homeros/rv/fail/b12-t00714.org 
+  org:  b'171 error No match for fuzzy expression: *Head onee'
+  ours: b'171 error No link found'
+/home/claude/Homeros/rv/fail/b12-t00734.org 
+  org:  b'40 goto 125'
+  ours: b'40 error No link found'
+/home/claude/Homeros/rv/fail/b12-t00760.org 
+  org:  b'0 error No link found'
+  ours: b'0 offer'
+b seed 12: 5 of 1500 differ (and 1 only when Org is asked in a row, 29 Org's stale tags match)

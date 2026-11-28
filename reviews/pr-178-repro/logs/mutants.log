@@ -1,0 +1,69 @@
+review: emph: no { before a marker                                     BROKEN
+review: subsup: no * script                                            1 of 3000 texts differ; first a00536.org: tree b'240 offer', mutant b'240 error No link found'
+review: entity: \_ and over 20 spaces                                  same answers on all 3000 texts
+review: latex: $ closing after a blank                                 39 of 3000 texts differ; first a00242.org: tree b'113 error No link found', mutant b'113 offer'
+review: line break after a backslash                                   same answers on all 3000 texts
+review: snippet: no - in a back end's name                             same answers on all 3000 texts
+review: macro: no _ in a name                                          same answers on all 3000 texts
+review: target: may end in a blank                                     same answers on all 3000 texts
+review: cookie: no [n/m]                                               89 of 3000 texts differ; first a00009.org: tree b'387 goto 0', mutant b'387 error No match for fuzzy expression: A b'
+review: footnote: an inline one holds no objects                       456 of 3000 texts differ; first a00001.org: tree b'187 goto 192', mutant b'187 goto 18446744073709551615'
+review: inline call: no end header                                     13 of 3000 texts differ; first a00339.org: tree b'62 offer', mutant b'62 cite'
+review: inline: no \< before                                           14 of 3000 texts differ; first a00307.org: tree b'125 offer', mutant b'125 result'
+review: citation: no style                                             192 of 3000 texts differ; first a00037.org: tree b'197 cite', mutant b'197 offer'
+review: under before sub swapped                                       same answers on all 3000 texts
+review: timestamp before link swapped at <                             same answers on all 3000 texts
+review: entity before latex swapped                                    38 of 3000 texts differ; first a00064.org: tree b'37 goto 37', mutant b'37 offer'
+review: lex: the one-character radio link before PT again              same answers on all 3000 texts
+review: at_point: into a list or a table at its first character        same answers on all 3000 texts
+review: tags of one colon pair                                         6 of 3000 texts differ; first c00223.org: tree b'582 offer', mutant b'582 tags'
+review: context: COMMENT part of the title                             same answers on all 3000 texts
+review: item tag: checkbox part of the tag                             same answers on all 3000 texts
+review: item tag: counter part of the tag                              same answers on all 3000 texts
+review: caption holds footnotes                                        22 of 3000 texts differ; first a00133.org: tree b'36 offer', mutant b'36 goto 36'
+review: headline holds line breaks                                     1 of 3000 texts differ; first a00905.org: tree b'354 error No link found', mutant b'354 offer'
+review: context: into contents at their end after a blank              same answers on all 3000 texts
+review: radio words not over a line end                                same answers on all 3000 texts
+review: coderef in any element                                         39 of 3000 texts differ; first a00040.org: tree b'86 error No match for coderef: ref', mutant b'86 goto 98'
+review: fuzzy: COMMENT part of a heading's words                       48 of 3000 texts differ; first a00060.org: tree b'100 goto 0', mutant b'100 error No match for fuzzy expression: Hidden'
+review: radio search: any <<<words>>>                                  same answers on all 3000 texts
+review: footnote: new on the last character                            1411 of 3000 texts differ; first a00001.org: tree b'199 goto 192', mutant b'199 new'
+review: footnote: anonymous stays                                      451 of 3000 texts differ; first a00001.org: tree b'187 goto 192', mutant b'187 goto 187'
+review: footnote: reference searched forward only                      155 of 3000 texts differ; first a00023.org: tree b'322 goto 128', mutant b'322 error Cannot find reference of footnote "1"'
+review: footnote: allow-reference-p at a line's start                  same answers on all 3000 texts
+review: path: blanks before a newline kept                             3 of 3000 texts differ; first c00161.org: tree b'368 link id  http://ab\x7f{{{[[nope]]#<<Tgt', mutant b'368 link id  http://ab\x7f{{{[[nope]]#  <<Tgt'
+review: unescape: backslashes not halved                               178 of 3000 texts differ; first c00000.org: tree b'11 error No match for fuzzy expression: a\\\\', mutant b'11 error No match for fuzzy expression: a\\\\\\\\'
+review: ~x a file                                                      same answers on all 3000 texts
+review: file:///x keeps its slashes                                    same answers on all 3000 texts
+review: file://c:/x keeps its slashes                                  same answers on all 3000 texts
+review: file+sys a link                                                86 of 3000 texts differ; first a00507.org: tree b'61 file b[[Task]]', mutant b'61 link File+Sys b[[Task]]'
+review: ftp. not guessed                                               5 of 3000 texts differ; first a00341.org: tree b'351 link ftp //ftp.x', mutant b'351 error No link found'
+review: url: trailing punctuation kept                                 same answers on all 3000 texts
+review: url: a bare scheme is a url                                    1 of 3000 texts differ; first b00500.org: tree b'379 error No link found', mutant b'379 error No valid link in "doi:"'
+review: url: leading non-alphanumerics kept                            same answers on all 3000 texts
+review: email: a domain may start with a dot                           same answers on all 3000 texts
+review: email: 5 characters around                                     19 of 3000 texts differ; first a00698.org: tree b'40 error No valid link in "mailto:<me@x.org>"', mutant b'40 error Garbage after link in "mailto:me@x.org>" (">")'
+review: global: last line without a newline not counted                same answers on all 3000 texts
+review: global: range's second date not on                             8 of 3000 texts differ; first a00350.org: tree b'295 agenda', mutant b'295 error No link found'
+review: radio targets in text order                                    same answers on all 3000 texts
+review: radio targets not reversed                                     same answers on all 3000 texts
+review: planning: anywhere after the date                              1177 of 3000 texts differ; first a00003.org: tree b'338 error No link found', mutant b'338 agenda'
+review: clock: never on                                                443 of 3000 texts differ; first a00009.org: tree b'224 agenda', mutant b'224 error No link found'
+review: the blanks after a link follow it                              2789 of 3000 texts differ; first a00000.org: tree b'32 error No link found', mutant b'32 error No match for fuzzy expression: Task'
+review: a citation reference not followed                              383 of 3000 texts differ; first a00008.org: tree b'376 error No link found', mutant b'376 cite'
+review: a keyword not global                                           328 of 3000 texts differ; first a00000.org: tree b'149 file b.org::*X', mutant b'149 error No link found'
+review: radio target holds all objects                                 527 of 3000 texts differ; first a00001.org: tree b'26 offer', mutant b'26 goto 23'
+review: radio match: blanks only                                       1 of 3000 texts differ; first b00369.org: tree b'174 goto 187', mutant b'174 offer'
+review: radio match: case matters                                      15 of 3000 texts differ; first a00238.org: tree b'12 goto 66', mutant b'12 offer'
+review: radio link inside a word's end                                 4 of 3000 texts differ; first a00256.org: tree b'395 offer', mutant b'395 goto 185'
+review: custom id: a prefix matches                                    1 of 3000 texts differ; first b00362.org: tree b'103 error No match for custom ID: cid', mutant b'103 goto 0'
+review: NAME: of another element's keyword                             16 of 3000 texts differ; first a00357.org: tree b'221 error No match for fuzzy expression: name', mutant b'221 goto 253'
+review: NAME: cookies separate words                                   same answers on all 3000 texts
+review: object end keeps its blanks                                    2415 of 3000 texts differ; first a00000.org: tree b'32 error No link found', mutant b'32 error No match for fuzzy expression: Task'
+review: from_string: radio targets of this buffer                      same answers on all 3000 texts
+review: fuzzy *heading also finds targets                              same answers on all 3000 texts
+review: priority of any length                                         same answers on all 3000 texts
+review: a table cell holds all objects                                 15 of 3000 texts differ; first a00081.org: tree b'42 offer', mutant b'42 result'
+review: a link's description holds links                               226 of 3000 texts differ; first a00002.org: tree b'99 link https //x.org', mutant b'99 link https //y.org'
+review: verse not read                                                 4 of 3000 texts differ; first b00547.org: tree b'50 goto 30', mutant b'50 offer'
+review: uri: the parser's description stops at its container (X)       5 of 3000 texts differ; first c00537.org: tree b'127 error No match for fuzzy expression: a', mutant b'127 error No link found'

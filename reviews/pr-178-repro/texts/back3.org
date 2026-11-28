@@ -1,0 +1,18 @@
+** x
+ 
+www.x.org
+[[b.org]] src_c{[[tgt]]}<HTTPS://X.ORG _[[Lattice]]_
+* [[Hidden]]
+#+NAME: name
+** Lattice :tag:
+[[*Head one][the head]]+[[x]]+
+:PROPERTIES:
+[fn:2] <URL:ftp.x> FILE:b.org
+[[x]][[tgt][a *b* [[x]]]]radio[[https://orgmode.org][Org]]call_f()
+\(x [[tgt]]\)
+* NEXT Lattice
+#+end_comment
+#+CAPTION: [[*Lattice]]
+<2026-11-27 Fri> [[ tgt ]] HTTPS://X.ORG
+#+begin_quote
+

@@ -1,0 +1,69 @@
+review: emph: no { before a marker                                                       BROKEN (applies 2 times)
+review: subsup: no * script                                                              NOT CAUGHT by -o
+review: entity: \_ and over 20 spaces                                                    NOT CAUGHT by -o
+review: latex: $ closing after a blank                                                   NOT CAUGHT by -o
+review: line break after a backslash                                                     NOT CAUGHT by -o
+review: snippet: no - in a back end's name                                               NOT CAUGHT by -o
+review: macro: no _ in a name                                                            NOT CAUGHT by -o
+review: target: may end in a blank                                                       NOT CAUGHT by -o
+review: cookie: no [n/m]                                                                 caught by -o: 8 of 2000 differ (no answer from Org on 3)
+review: footnote: an inline one holds no objects                                         caught by -o: 115 of 2000 differ (no answer from Org on 4)
+review: inline call: no end header                                                       NOT CAUGHT by -o
+review: inline: no \< before                                                             caught by -o: 4 of 2000 differ (no answer from Org on 3)
+review: citation: no style                                                               caught by -o: 45 of 2000 differ (no answer from Org on 6)
+review: under before sub swapped                                                         NOT CAUGHT by -o
+review: timestamp before link swapped at <                                               NOT CAUGHT by -o
+review: entity before latex swapped                                                      caught by -o: 2 of 2000 differ (no answer from Org on 3)
+review: lex: the one-character radio link before PT again                                NOT CAUGHT by -o
+review: at_point: into a list or a table at its first character                          NOT CAUGHT by -o
+review: tags of one colon pair                                                           NOT CAUGHT by -o
+review: context: COMMENT part of the title                                               NOT CAUGHT by -o
+review: item tag: checkbox part of the tag                                               NOT CAUGHT by -o
+review: item tag: counter part of the tag                                                NOT CAUGHT by -o
+review: caption holds footnotes                                                          caught by -o: 4 of 2000 differ (no answer from Org on 4)
+review: headline holds line breaks                                                       NOT CAUGHT by -o
+review: context: into contents at their end after a blank                                NOT CAUGHT by -o
+review: radio words not over a line end                                                  NOT CAUGHT by -o
+review: coderef in any element                                                           caught by -o: 7 of 2000 differ (no answer from Org on 3)
+review: fuzzy: COMMENT part of a heading's words                                         caught by -o: 2 of 2000 differ (no answer from Org on 3)
+review: radio search: any <<<words>>>                                                    NOT CAUGHT by -o
+review: footnote: new on the last character                                              caught by -o: 22 of 2000 differ (no answer from Org on 4)
+review: footnote: anonymous stays                                                        caught by -o: 74 of 2000 differ (no answer from Org on 4)
+review: footnote: reference searched forward only                                        caught by -o: 1 of 2000 differ (no answer from Org on 5)
+review: footnote: allow-reference-p at a line's start                                    NOT CAUGHT by -o
+review: path: blanks before a newline kept                                               NOT CAUGHT by -o
+review: unescape: backslashes not halved                                                 NOT CAUGHT by -o
+review: ~x a file                                                                        NOT CAUGHT by -o
+review: file:///x keeps its slashes                                                      NOT CAUGHT by -o
+review: file://c:/x keeps its slashes                                                    NOT CAUGHT by -o
+review: file+sys a link                                                                  caught by -o: 2 of 2000 differ (no answer from Org on 3)
+review: ftp. not guessed                                                                 NOT CAUGHT by -o
+review: url: trailing punctuation kept                                                   NOT CAUGHT by -o
+review: url: a bare scheme is a url                                                      NOT CAUGHT by -o
+review: url: leading non-alphanumerics kept                                              NOT CAUGHT by -o
+review: email: a domain may start with a dot                                             NOT CAUGHT by -o
+review: email: 5 characters around                                                       caught by -o: 1 of 2000 differ (no answer from Org on 3)
+review: global: last line without a newline not counted                                  NOT CAUGHT by -o
+review: global: range's second date not on                                               NOT CAUGHT by -o
+review: radio targets in text order                                                      NOT CAUGHT by -o
+review: radio targets not reversed                                                       NOT CAUGHT by -o
+review: planning: anywhere after the date                                                caught by -o: 56 of 2000 differ (no answer from Org on 4)
+review: clock: never on                                                                  caught by -o: 65 of 2000 differ (no answer from Org on 5)
+review: the blanks after a link follow it                                                caught by -o: 123 of 2000 differ (no answer from Org on 7)
+review: a citation reference not followed                                                caught by -o: 3 of 2000 differ (no answer from Org on 3)
+review: a keyword not global                                                             caught by -o: 74 of 2000 differ (no answer from Org on 7)
+review: radio target holds all objects                                                   caught by -o: 46 of 2000 differ (no answer from Org on 4)
+review: radio match: blanks only                                                         NOT CAUGHT by -o
+review: radio match: case matters                                                        caught by -o: 1 of 2000 differ (no answer from Org on 3)
+review: radio link inside a word's end                                                   NOT CAUGHT by -o
+review: custom id: a prefix matches                                                      NOT CAUGHT by -o
+review: NAME: of another element's keyword                                               caught by -o: 2 of 2000 differ (no answer from Org on 3)
+review: NAME: cookies separate words                                                     NOT CAUGHT by -o
+review: object end keeps its blanks                                                      caught by -o: 32 of 2000 differ (no answer from Org on 4)
+review: from_string: radio targets of this buffer                                        caught by -o: org_conform: 2000 texts, seed 1
+review: fuzzy *heading also finds targets                                                NOT CAUGHT by -o
+review: priority of any length                                                           NOT CAUGHT by -o
+review: a table cell holds all objects                                                   caught by -o: 5 of 2000 differ (no answer from Org on 3)
+review: a link's description holds links                                                 caught by -o: 43 of 2000 differ (no answer from Org on 5)
+review: verse not read                                                                   caught by -o: 1 of 2000 differ (no answer from Org on 3)
+review: uri: the parser's description stops at its container (X)                         NOT CAUGHT by -o

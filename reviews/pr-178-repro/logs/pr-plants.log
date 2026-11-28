@@ -1,0 +1,24 @@
+org: open: a footnote's definition at its begin, not after its label                     caught: tests/test_org.c:1176: CHECK(r.kind == ORG_OPEN_GOTO ? r.pos == opens[i].to : r.kind > ORG_OPEN_ERROR || !strc
+org: open: no radio links                                                                caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: verbatim holds objects                                                        caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: a subscript's braces not its contents                                         caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: tags take the colon after them (against Org)                                  caught by -o: 34 of 2000 differ (no answer from Org on 3)
+org: open: a statistics cookie part of a heading's words (against Org)                   caught by -o: 8 of 2000 differ (no answer from Org on 3)
+org: open: any <<words>> a target (against Org)                                          caught by -o: 15 of 2000 differ (no answer from Org on 3)
+org: open: a custom id anywhere, not only in a property drawer (against Org)             caught by -o: 1 of 2000 differ (no answer from Org on 3)
+org: open: an object ending at the cursor not returned (against Org)                     caught by -o: 68 of 2000 differ (no answer from Org on 5)
+org: open: the blanks after a definition's label not skipped (against Org)               caught by -o: 17 of 2000 differ (no answer from Org on 2)
+org: open: a comment's link searched on its line only (against Org)                      caught by -o: 1 of 2000 differ (no answer from Org on 3)
+org: open: a citation one object (against Org)                                           caught by -o: 3 of 2000 differ (no answer from Org on 3)
+org: open: the last NAME line not the element's name                                     caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: <URL:...> on the line not taken first (against Org)                           caught by -o: 9 of 2000 differ (no answer from Org on 3)
+org: open: an address's closing > left out (against Org)                                 caught by -o: 2 of 2000 differ (no answer from Org on 3)
+org: open: a URL after a parenthesis not cut at its closing one (against Org)            caught by -o: 1 of 2000 differ (no answer from Org on 3)
+org: open: link types in the case written only (against Org)                             caught by -o: 71 of 2000 differ (no answer from Org on 4)
+org: open: a date range of three dashes                                                  caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: quotes in a message not escaped (against Org)                                 caught by -o: 4 of 2000 differ (no answer from Org on 3)
+org: open: a link that stops early taken whole                                           caught: tests/test_org.c:1175: CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind) fai
+org: open: FILE: an external link (against Org)                                          caught by -o: 26 of 2000 differ (no answer from Org on 4)
+org: open: <URL:a@b> without mailto: (against Org)                                       caught by -o: 1 of 2000 differ (no answer from Org on 3)
+org: grow takes one step however far n is                                                caught: ==12780==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x50c000000240 at pc 0x564f19a3aef6 bp 0x7ff
+org: open: a target too long for OrgOpen.s cut                                           caught: tests/test_org.c:1182: CHECK(!org_open(l, 614, 0, &r) && r.kind == ORG_OPEN_ERROR && !strcmp(r.s, "Link too lo
