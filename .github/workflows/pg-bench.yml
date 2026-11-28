@@ -1,0 +1,21 @@
+# A real server on the bench: the console debugger attached to a PostgreSQL backend (tests/pg.sh), on the runner's own PostgreSQL.
+name: pg-bench
+on:
+  push:
+    branches: [claude/project-thread-l4spyq]
+    paths: ['tests/pg.sh', '.github/workflows/pg-bench.yml']
+concurrency: {group: pg-bench, cancel-in-progress: true}
+jobs:
+  attach:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Attach to a backend, stop it in the executor, step, and leave
+        run: |
+          lib=$(ls dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$\|/ask\.c$')
+          gcc -std=c17 -O2 -Wall -Wextra -Werror -static -pthread $lib dbg/engine.c dbg/session.c dbg/eval.c dbg/view.c dbg/ask.c dbg/win/target.c cmd/hdbg.c -o "$RUNNER_TEMP/hdbg.exe"
+          tests/pg.sh "$RUNNER_TEMP/hdbg.exe"
