@@ -1,4 +1,6 @@
-# A real server on the bench: the console debugger attached to a PostgreSQL backend (tests/pg.sh).
+# A real server on the bench: the console debugger attached to a PostgreSQL backend (tests/pg.sh). PostgreSQL is built here
+# from its source, unoptimised and with debug information, as someone who reads it in a debugger builds it (the binaries the
+# runner has, and their builder's archive, come without).
 name: pg-bench
 on:
   push:
@@ -8,14 +10,30 @@ concurrency: {group: pg-bench, cancel-in-progress: true}
 jobs:
   attach:
     runs-on: windows-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: pg
+        with:
+          path: ${{ runner.temp }}\pg
+          key: pg-17.2-debug-1
+      - name: Build PostgreSQL 17.2 with debug information
+        if: steps.pg.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          pip install meson ninja || exit /b 1
+          choco install winflexbison3 -y --no-progress || exit /b 1
+          curl -sfL -o "%RUNNER_TEMP%\pg.tar.gz" https://ftp.postgresql.org/pub/source/v17.2/postgresql-17.2.tar.gz || exit /b 1
+          tar -xzf "%RUNNER_TEMP%\pg.tar.gz" -C "%RUNNER_TEMP%" || exit /b 1
+          cd /d "%RUNNER_TEMP%\postgresql-17.2"
+          meson setup build --buildtype=debug --prefix="%RUNNER_TEMP%\pg" -Dnls=disabled -Dplperl=disabled -Dplpython=disabled -Dpltcl=disabled -Dssl=none -Dicu=disabled -Dzlib=disabled -Dreadline=disabled || exit /b 1
+          ninja -C build install > build.log 2>&1 || (powershell -c "Get-Content build.log -Tail 60" & exit /b 1)
+          dir "%RUNNER_TEMP%\pg\bin\postgres.*"
       - name: Attach to a backend, stop it in the executor, step, and leave
+        shell: bash
         run: |
           lib=$(ls dbg/*.c | grep -v '/engine\.c$\|/session\.c$\|/eval\.c$\|/view\.c$\|/ask\.c$')
           gcc -std=c17 -O2 -Wall -Wextra -Werror -static -pthread $lib dbg/engine.c dbg/session.c dbg/eval.c dbg/view.c dbg/ask.c dbg/win/target.c cmd/hdbg.c -o "$RUNNER_TEMP/hdbg.exe"
-          tests/pg.sh "$RUNNER_TEMP/hdbg.exe"
+          tests/pg.sh "$RUNNER_TEMP/hdbg.exe" "$(cygpath "$RUNNER_TEMP")/pg"
