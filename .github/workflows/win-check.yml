@@ -4,7 +4,7 @@ name: win-check
 on:
   push:
     branches: [claude/project-thread-l4spyq]
-    paths: ['dbg/**', 'cmd/**', 'tests/**', 'traces/**', 'subjects/zoo.c', 'check.sh', '.github/workflows/win-check.yml']
+    paths: ['dbg/**', 'cmd/**', 'tests/**', 'traces/**', 'subjects/zoo.c', 'check.sh', '.github/workflows/win-check.yml', '!tests/pg.sh']   # pg.sh is pg-bench's
 concurrency: {group: win-check, cancel-in-progress: true}   # a newer push answers for the older
 jobs:
   stress:

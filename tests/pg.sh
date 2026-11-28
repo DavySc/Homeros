@@ -28,8 +28,12 @@ psql -X -At -c "select pg_sleep(90)" -c "select count(*) + 1000000 from pg_class
 session=$!
 sleep 2
 pid=$(psql -X -At -c "select pid from pg_stat_activity where query like '%pg_sleep%' and pid <> pg_backend_pid()")
-powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$(dirname "$0")/../vs/pg.ps1")" "$pid" "$(cygpath -w "$work/vs.txt")" | cut -c1-600
-wait $session || { echo "pg: the session Visual Studio was in did not end well"; exit 1; }
+# Visual Studio may hang (the first run of this did, for the hour the job has): it gets five minutes, and is ended if it stays
+timeout 300 powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$(dirname "$0")/../vs/pg.ps1")" "$pid" "$(cygpath -w "$work/vs.txt")" | cut -c1-600 || echo "pg: Visual Studio's script did not end by itself"
+powershell -NoProfile -Command "Get-Process devenv -ErrorAction SilentlyContinue | Stop-Process -Force"
+cat "$work/vs.txt" 2>/dev/null | cut -c1-600 || true
+timeout 120 tail --pid=$session -f /dev/null || true
+wait $session || { echo "pg: the session Visual Studio was in did not end well"; tail -n 20 "$work/log.txt"; exit 1; }
 ours=$(awk '/^(breakpoint|stepped)$/ { getline; n = split($NF, p, "/"); print $3, p[n] }' "$work/hdbg.txt")
 theirs=$(tr -d '\r' < "$work/vs.txt" | sed -n 's/^STEP [a-z]* \(.*\) [0-9]*$/\1/p')
 [ "$ours" = "$theirs" ] || { echo "pg: ours stops at:"; echo "$ours"; echo "Visual Studio at:"; echo "$theirs"; exit 1; }
