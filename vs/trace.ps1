@@ -5,6 +5,7 @@
 # A third, `stops`: a breakpoint on each of the first six functions `into` came through, and where each run to the next stops
 # (where in a function its breakpoint lies: on its first instruction, measured; and what its arguments are shown as there).
 # A fourth, `outs`: the same breakpoints, and from each a step out: where it stops and what Visual Studio says the function returned.
+# After each of those stops a line LOCALS with the caller's variables.
 param($exe, $out, $most)
 New-Item -ItemType Directory -Force $out | Out-Null
 $name = [IO.Path]::GetFileNameWithoutExtension($exe)
@@ -36,6 +37,8 @@ foreach ($script in 'into', 'over', 'stops', 'outs') {
         $shown = " FROM $from RET $($r.IsValidValue) $($r.Type)=$($r.Value)"
       }
       $lines += "STEP $script $(Place $dte)$shown"
+      # in the caller after a step out: its variables as the Locals window has them, to hold ours against (name, type, value; tabs between)
+      if ($script -eq 'outs') { $lines += "LOCALS`t" + ((Again { @($dte.Debugger.CurrentStackFrame.Locals | ForEach-Object { "$($_.Name)`t$($_.Type)`t$($_.Value)" }) }) -join "`t") }
     }
   } catch { $lines += "FAILED: $_" }
   try { $dte.Debugger.Stop($true) } catch {}
