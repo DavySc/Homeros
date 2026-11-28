@@ -2,6 +2,9 @@ STEP start main : 5368713360
 BREAK main
 BREAK fact
 STEP outs fact : 5368713312 FROM fact RET False =identifier "$ReturnValue" is undefined
+LOCALS	n	int	3
 STEP outs fact : 5368713312 FROM fact RET False =identifier "$ReturnValue" is undefined
+LOCALS	n	int	1
 STEP outs fact : 5368713312 FROM fact RET False =identifier "$ReturnValue" is undefined
+LOCALS	n	int	1
 STEP outs ended

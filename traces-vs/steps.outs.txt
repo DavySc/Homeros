@@ -2,16 +2,29 @@ STEP start main : 5368713664
 BREAK main
 BREAK add
 STEP outs main : 5368713691 FROM add RET True int=3
+LOCALS	add returned	int	3	k	int	0	p	Pair	{a=0 b=0 }	total	int	0
 STEP outs mul : 5368713311 FROM add RET True int=3
+LOCALS	add returned	int	3	i	int	0	r	int	0	x	int	3	y	int	4
 STEP outs mul : 5368713311 FROM add RET True int=6
+LOCALS	add returned	int	6	i	int	1	r	int	3	x	int	3	y	int	4
 STEP outs mul : 5368713311 FROM add RET True int=9
+LOCALS	add returned	int	9	i	int	2	r	int	6	x	int	3	y	int	4
 STEP outs mul : 5368713311 FROM add RET True int=12
+LOCALS	add returned	int	12	i	int	3	r	int	9	x	int	3	y	int	4
 STEP outs apply : 5368713582 FROM add RET True int=15
+LOCALS	add returned	int	15	apply will return	int	15	op	int(*)(int, int)	0x0000000140001000 {steps.exe!add(int, int)}	x	int	7	y	int	8
 STEP outs mul : 5368713311 FROM add RET True int=2
+LOCALS	add returned	int	2	i	int	0	r	int	0	x	int	2	y	int	3
 STEP outs mul : 5368713311 FROM add RET True int=4
+LOCALS	add returned	int	4	i	int	1	r	int	2	x	int	2	y	int	3
 STEP outs mul : 5368713311 FROM add RET True int=6
+LOCALS	add returned	int	6	i	int	2	r	int	4	x	int	2	y	int	3
 STEP outs mul : 5368713311 FROM add RET True int=4
+LOCALS	add returned	int	4	i	int	0	r	int	0	x	int	4	y	int	2
 STEP outs mul : 5368713311 FROM add RET True int=8
+LOCALS	add returned	int	8	i	int	1	r	int	4	x	int	4	y	int	2
 STEP outs nested : 5368713649 FROM add RET True int=14
+LOCALS	add returned	int	14	x	int	4
 STEP outs main : 5368714015 FROM add RET True int=2
+LOCALS	add returned	int	2	k	int	3	p	Pair	{a=2 b=1 }	total	int	243
 STEP outs ended

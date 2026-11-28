@@ -2,4 +2,5 @@ STEP start main : 5369032368
 BREAK main
 BREAK openDatabase
 STEP outs main : 5369032406 FROM openDatabase RET True int=0
+LOCALS	openDatabase returned	int	0	db	sqlite3 *	0x00000000005459a0 {pVfs=0x00000001401930e0 {sql_o2.exe!sqlite3_vfs winVfs} {iVersion=3 szOsFile=96 ...} ...}	sum	int	0
 STEP outs ended

@@ -2,16 +2,29 @@ STEP start main : 5368713264
 BREAK main
 BREAK lined
 STEP outs main : 5368713312 FROM lined RET True int=2
+LOCALS	lined returned	int	2	m	volatile int	0	n	volatile int	0
 STEP outs main : 5368713333 FROM lined RET True int=3
+LOCALS	lined returned	int	3	m	volatile int	0	n	volatile int	2
 STEP outs main : 5368713431 FROM lined RET True int=78
+LOCALS	lined returned	int	78	m	volatile int	0	n	volatile int	77
 STEP outs main : 5368713446 FROM lined RET True int=79
+LOCALS	lined returned	int	79	m	volatile int	0	n	volatile int	77
 STEP outs main : 5368713482 FROM lined RET True int=235
+LOCALS	lined returned	int	235	m	volatile int	0	n	volatile int	234
 STEP outs main : 5368713510 FROM lined RET True int=470
+LOCALS	lined returned	int	470	m	volatile int	0	n	volatile int	469
 STEP outs main : 5368713517 FROM lined RET True int=471
+LOCALS	lined returned	int	471	m	volatile int	0	n	volatile int	469
 STEP outs main : 5368713559 FROM lined RET True int=3
+LOCALS	lined returned	int	3	m	volatile int	2	n	volatile int	941
 STEP outs main : 5368713611 FROM lined RET True int=946
+LOCALS	lined returned	int	946	m	volatile int	947	n	volatile int	945
 STEP outs main : 5368713659 FROM lined RET True int=1
+LOCALS	lined returned	int	1	i	int	0	m	volatile int	1893	n	volatile int	945
 STEP outs main : 5368713659 FROM lined RET True int=2
+LOCALS	lined returned	int	2	i	int	1	m	volatile int	1893	n	volatile int	946
 STEP outs main : 5368713659 FROM lined RET True int=3
-STEP outs main : 5368713692 FROM lined RET True int=953
+LOCALS	lined returned	int	3	i	int	2	m	volatile int	1893	n	volatile int	948
+STEP outs  : 5368713692 FROM lined RET  =
+LOCALS	lined returned	int	953	m	volatile int	1893	n	volatile int	952
 STEP outs ended

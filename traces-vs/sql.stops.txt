@@ -1,4 +1,4 @@
-STEP start main : 5369756896
+STEP start  : 
 BREAK main
 BREAK sqlite3_open
 BREAK openDatabase

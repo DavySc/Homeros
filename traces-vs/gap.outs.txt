@@ -2,4 +2,5 @@ STEP start main : 5368713456
 BREAK main
 BREAK work
 STEP outs main : 5368713477 FROM work RET True int=0
+LOCALS	work returned	int	0	main will return	int	0
 STEP outs ended

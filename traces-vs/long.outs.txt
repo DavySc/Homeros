@@ -3,4 +3,5 @@ BREAK main
 BREAK __scrt_common_main_seh
 BREAK __scrt_is_managed_app
 STEP outs __scrt_common_main_seh : 5368713798 FROM __scrt_is_managed_app RET True bool=false
+LOCALS	__scrt_is_managed_app returned	bool	false	has_cctor	bool	false	is_nested		Variable is optimized away and not available.	main_result	const int	0	tls_dtor_callback		Variable is optimized away and not available.	tls_init_callback		Variable is optimized away and not available.
 STEP outs ended

@@ -3,5 +3,7 @@ BREAK main
 BREAK shift
 BREAK sum
 STEP outs main : 5368713264 FROM shift RET True Triple &={...}
+LOCALS	shift returned	Triple &	{a=3 b=4 c=5 }
 STEP outs main : 5368713294 FROM sum RET True int=10
+LOCALS	sum returned	int	10
 STEP outs ended

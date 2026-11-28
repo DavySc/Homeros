@@ -1,5 +1,6 @@
-STEP start  : 5368713552
+STEP start main : 5368713552
 BREAK main
 BREAK shift
 STEP outs main : 5368713651 FROM shift RET True Triple &={...}
+LOCALS	shift returned	Triple &	{a=3 b=4 c=5 }	small	Three	{a=1 '\x1' b=2 '\x2' c=3 '\x3' }	t	Triple	{a=1 b=2 c=3 }
 STEP outs ended

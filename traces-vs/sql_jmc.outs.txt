@@ -3,4 +3,5 @@ BREAK main
 BREAK sqlite3_open
 BREAK openDatabase
 STEP outs openDatabase : 5369735216 FROM sqlite3_open RET False =identifier "$ReturnValue" is undefined
+LOCALS	flags	unsigned int	6	ppDb	sqlite3 * *	0x000000000014ff08 {0x00000001401794d0 {sql_jmc.exe!int(* __xi_z[1])()} {pVfs=0x0000000000000000 <NULL> ...}}	zFilename	const char *	0x00000001401a65a8 ":memory:"	zVfs	const char *	0x0000000000000000 <NULL>
 STEP outs ended
