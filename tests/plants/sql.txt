@@ -122,13 +122,13 @@ sql: a name's escaped tab kept escaped in the catalog (test_sql_editor)~test TES
 sql: the catalog not read at a login (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (was < DB_READY && db_state(&s->db) >= DB_READY) catread(&s->spec);¶~
 sql: a dropped catalog keeps its rows (test_sql_editor)~test TESTS=sql_editor~~src/sql/sql.c~	if (st != 2) c->cols.n = c->tabs.n = 0;¶~
 specs: SqlCat read once only, not again after a failure~specs~find design/specs -name '*.cfg' ! -name SqlCat_ok.cfg -delete~design/specs/SqlCat_ok.cfg~ Variant = "ok"~ Variant = "noretry"
-sql: a NULL without its mark~test TESTS=sql~~src/sql/tds.c~str_add(&t->out, NET_NULL, 5)~str_add(&t->out, NET_NULL + 1, 4)
+sql: a NULL without its mark~test TESTS=sql~~src/sql/tds.c~str_add(&t->out, NET_NULL, 5)~str_add(&t->out, "NULL", 4)
 sql: Postgres's rows without their mark~test TESTS=sql~~src/sql/pg.c~str_add(o, i ? "\t" : NET_ROW, 1)~str_add(o, "\t", i ? 1 : 0)
 sql: Postgres's error not closed~test TESTS=sql~~src/sql/pg.c~(k == 'E' && str_add(o, NET_ERR, 1)) || str_add(o, "\n", 1)~str_add(o, "\n", 1)
 sql: the marks' plain text keeps an error's mark~test TESTS=sql~~src/sql/net.c~if ((unsigned char)s[i] < 0xFC)~if ((unsigned char)s[i] < 0xFD)
 sql: the results' widths not capped~test TESTS=sql_editor~~src/sql/sql.c~fit(q + 1 + nul, k - nul, CAP, &c);~fit(q + 1 + nul, k - nul, (size_t)-1, &c);
 sql: a cut value's last cell not kept for its ...~test TESTS=sql_editor~~src/sql/sql.c~k = fit(p, n, (size_t)w - 1, &c), c++;~k = fit(p, n, (size_t)w, &c), c++;
-sql: a long set's row numbers as wide as its first rows'~test TESTS=sql_editor~~src/sql/sql.c~k = open ? 1000000 : s->nheld;~k = s->nheld;
+sql: a long set's row numbers as wide as its first rows'~test TESTS=sql_editor~~src/sql/sql.c~k = open ? 1000000 : s->nheld;~k = (size_t)open * 0 + s->nheld;
 sql: a long set held to its end~test TESTS=sql_editor~~src/sql/sql.c~(++s->nheld == HOLD && lay(s, 1))~(++s->nheld == 0 && lay(s, 1))
 sql: a laid out set's later rows dropped~test TESTS=sql_editor~~src/sql/sql.c~		if (s->in == 2) r = line(s, &s->g[s->ng - 1], p + 1, n - 1, ++s->g[s->ng - 1].rows);¶~		if (s->in == 2) r = 0;¶
 sql: a column without a name blank~test TESTS=sql_editor~~src/sql/sql.c~cell(s, nr || k ? p : NONAME, nr || k ? k : sizeof NONAME - 1,~cell(s, p, k,
@@ -141,7 +141,7 @@ sql: a new run keeps the last one's grids~test TESTS=sql_editor~~src/sql/sql.c~	
 sql: the status line's rows not counted~test TESTS=sql_editor~~src/sql/sql.c~rows += s->g[i].rows;~rows += 0 * s->g[i].rows;
 sql: the status line misses an error~test TESTS=sql_editor~~src/sql/sql.c~s->err = !s->err, s->bad |= 1, a = s->o.n;~s->err = !s->err, a = s->o.n;
 sql: the status line misses a cancel~test TESTS=sql_editor~~src/sql/sql.c~		s->bad = 2;¶~
-sql: the status line redone with no run~test TESTS=sql_editor~~src/sql/sql.c~	if (!ran) return;~	if (0) return;
+sql: the status line redone with no run~test TESTS=sql_editor~~src/sql/sql.c~	if (!ran) return;~	if (ran < 0) return;
 sql: the results without their status line~test TESTS=sql_editor~~src/sql/sql.c~E->buf->status = s->status;~E->buf->status = "";
 sql: the Messages rule in no face (review)~test TESTS=sql_editor~~src/sql/sql.c~sizeof h - 2, FACE_FUNCTION~sizeof h - 2, FACE_NONE
 sql: the row count in no face (review)~test TESTS=sql_editor~~src/sql/sql.c~span(s, s->o.n, n - 1, FACE_ORG_TABLE)~span(s, s->o.n, n - 1, FACE_NONE)
@@ -150,13 +150,13 @@ sql: the lines before a grid counted twice~test TESTS=sql_editor~~src/sql/sql.c~
 sql: the running status line's text (review)~test TESTS=sql_editor~~src/sql/sql.c~"Executing query... \xc2\xb7 %s / %s"~"Executing... \xc2\xb7 %s / %s"
 sql: a wide character counted as one cell (review)~test TESTS=sql_editor~~src/sql/sql.c~2 : (size_t)uni_width(u, n, i)) <= w~2 : 1) <= w
 sql: a control byte counted as one cell (review)~test TESTS=sql_editor~~src/sql/sql.c~u[i] < 32 || u[i] == 127 ? 2 :~u[i] < 32 || u[i] == 127 ? 1 :
-sql: an empty set shows no grid (review)~test TESTS=sql_editor~~src/sql/sql.c~if (!s->in || (s->in == 1 && lay(s, 0)))~if (!s->in || (s->in == 1 && (s->nheld ? lay(s, 0) : (s->held.n = 0))))
+sql: an empty set shows no grid (review)~test TESTS=sql_editor~~src/sql/sql.c~if (!s->in || (s->in == 1 && lay(s, 0)))~if (!s->in || (s->in == 1 && (s->nheld ? lay(s, 0) : (s->held.n = 0, 0))))
 sql: Postgres's error without its mark (editor: status) (review)~test TESTS=sql_editor~~src/sql/pg.c~return (k == 'E' && str_add(o, NET_ERR, 1)) || str_addf~return str_addf
 sql: a message inside a set laid out in the grid~test TESTS=sql_editor~~src/sql/sql.c~r = s->in ? str_add(&s->msgs, p, n) || str_add(&s->msgs, "\n", 1) : say(s, p, n);~r = say(s, p, n);
 sql: messages held to the run's end~test TESTS=sql_editor~~src/sql/sql.c~r = s->in ? str_add(&s->msgs~r = s->q.n ? str_add(&s->msgs
 sql: a set's end not taken~test TESTS=sql_editor~~src/sql/sql.c~else if (m == 0xFB) r = endset(s);~else if (m == 0xFB) r = 0;
 sql: the client's own error not marked~test TESTS=sql_editor~~src/sql/sql.c~{ putz(s, NET_ERR), putz(s, m), putz(s, NET_ERR "\n"); }~{ putz(s, m), putz(s, "\n"); }
-sql: a waiting set's rows not shown~test TESTS=sql_editor~~src/sql/sql.c~loop_timer(tick, s, WAIT), ~
+sql: a waiting set's rows not shown~test TESTS=sql_editor~~src/sql/sql.c~loop_timer(tick, s, WAIT), ~loop_timer(tick, s, -1), 
 sql: SQL Server's statement end without its mark~test TESTS=sql~~src/sql/tds.c~		if (!t->quiet && str_add(&t->out, NET_END, 2)) return -1;¶~
 sql: Postgres's statement end without its mark~test TESTS=sql~~src/sql/pg.c~str_add(o, NET_END "(", 3)~str_add(o, "(", 1)
 sql: the marks' plain text keeps a statement end's line~test TESTS=sql~~src/sql/net.c~i += i + 1 < n && s[i + 1] == '\n';~;
