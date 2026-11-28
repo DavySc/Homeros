@@ -103,14 +103,14 @@ int main(void)
 	CHECK(!strcmp(e.msg, "Kitten on save: off"));
 	feed(&e, " uk");
 	CHECK(!strcmp(e.msg, "Kitten on save: on"));
-	/* SQL (package 22): SPC r opens the results split, :Connect [name]
-	   names the buffer's connection, :Disconnect ends its session,
+	/* SQL (package 22): SPC r opens the results split, :Connect opens the
+	   connections picker (Esc shuts it), :Disconnect ends its session,
 	   :Declare lists or sets its variables (here no results, no file and
 	   no session) */
 	feed(&e, " r");
 	CHECK(!strcmp(e.msg, "sql: no results yet (F5 runs the query)") && !e.ks.pending);
 	feed(&e, ":Connect\r");
-	CHECK(!strcmp(e.msg, "sql: not connected"));
+	CHECK(tools_key(&e, KEY_ESC) == 1 && tools_key(&e, KEY_ESC) == 1 && !tools_key(&e, KEY_ESC));   /* insert, then normal mode, then shut */
 	feed(&e, ":Disconnect\r");
 	CHECK(!strncmp(e.msg, "sql: ", 5));
 	e.msg[0] = 0;
