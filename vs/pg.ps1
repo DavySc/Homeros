@@ -14,9 +14,16 @@ try {
   if (-not (Stopped $dte)) { throw "no stop after attaching" }
   Again { $dte.Debugger.Breakpoints.Add('ExecutorRun') } | Out-Null
   $lines += "NOTE breakpoints: " + ((Again { @($dte.Debugger.Breakpoints | ForEach-Object { "$($_.FunctionName) $($_.Enabled) children=$($_.Children.Count)" }) }) -join '; ')
+  $lines += "NOTE attached and running again at $(Get-Date -Format HH:mm:ss)"
   Again { $dte.Debugger.Go($false) }
   Start-Sleep -Seconds 2   # it runs again before the stop is waited for
-  if (-not (Stopped $dte 900)) { throw "no stop at the breakpoint" }
+  if (-not (Stopped $dte 900)) {
+    # where it is instead, so the next try knows more
+    $lines += "NOTE mode $((Again { $dte.Debugger.CurrentMode })) reason $((Again { $dte.Debugger.LastBreakReason }))"
+    Again { $dte.Debugger.Break($true) }
+    if (Stopped $dte) { foreach ($t in @(Again { @($dte.Debugger.CurrentProgram.Threads) })) { $lines += 'NOTE thread ' + ((@($t.StackFrames | ForEach-Object { $_.FunctionName }) | Select-Object -First 12) -join ' ') } }
+    throw "no stop at the breakpoint"
+  }
   $lines += "STEP stop $(Place $dte)"
   $lines += 'STACK ' + ((Again { @($dte.Debugger.CurrentThread.StackFrames | ForEach-Object { $_.FunctionName }) }) -join ' ')
   foreach ($e in 'queryDesc->operation', 'direction', 'count', 'execute_once', 'queryDesc->sourceText', '*queryDesc') { $lines += "VALUE $e = $((Again { $dte.Debugger.GetExpression($e, $false, 2000) }).Value)" }
