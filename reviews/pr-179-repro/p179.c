@@ -62,20 +62,19 @@ static void items(const char *what)
 {
 	const char *n;
 	printf("%s: picker items:", what);
-	for (int i = 0, live = 0; (n = sql_pick(&e, i, &live)); i++) printf(" [%s]%s", n, live ? "*" : "");
+	for (int i = 0; (n = sql_pick(&e, i)); i++) printf(" [%s]", n);
 	printf("\n");
 }
 static void st(const char *what)
 {
-	int live = -1;
-	const char *s = sql_status(e.buf, &live);
-	printf("%s: status [%s] live %d msg [%s]\n", what, s ? s : "(null)", live, e.msg);
+	const char *s = sql_status(&e, e.buf);
+	printf("%s: status [%s] msg [%s]\n", what, s ? s : "(null)", e.msg);
 }
 static int waitfor(const char *item)   /* the picker's list holds item; ms waited, -1 never */
 {
 	for (int i = 0; i < 600; i++) {
 		const char *n;
-		for (int j = 0, live; (n = sql_pick(&e, j, &live)); j++) if (!strcmp(n, item)) return i * 10;
+		for (int j = 0; (n = sql_pick(&e, j)); j++) if (!strcmp(n, item)) return i * 10;
 		loop_once(10);
 	}
 	return -1;

@@ -1,0 +1,32 @@
+30 plants, 0 bad
+caught        snip: Enter inserts the first snippet, not the selected one :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: a new prompt keeps the old preview :: tests/test_snip.c:552: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: a new prompt keeps the old selection :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker lists no snippets :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker opens a file on Enter :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker previews no body :: tests/test_snip.c:552: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: the picker shows no description :: tests/test_snip.c:552: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        snip: the picker sorts by score again :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the picker's prompt filters the first list, not the popup's order :: tests/test_snip.c:94: CHECK(!strcmp(b, want)) failed
+caught        snip: the preview shows the description :: tests/test_snip.c:552: CHECK(strstr(screen, "wrp w") && strstr(screen, "begin")) failed
+caught        sql: :Connect cuts a database's name at its space (test_sql_editor) :: tests/test_sql_editor.c:420: CHECK(!sql_connect(&e, "") && (typed("srv/my db\r"), !strcmp(sql_status(&e, e.buf), "srv/my db")) && sql_key(&e, KEY_F5) 
+caught        sql: Esc leaves the F5 waiting, so a :Declare typed later runs it (test_sql_editor) :: tests/test_sql_editor.c:462: CHECK(e.mode == MODE_NORMAL && !strstr(results(), " 18 \xe2\x94\x82 @b") && !sql_declare(&e, "") && !strcmp(e.msg, "sql: 
+caught        sql: Postgres's templates in the picker (test_sql_editor) :: tests/test_sql_editor.c:440: CHECK(strstr(picked(), "pgs/postgres ") && !strstr(picked(), "template") && !strstr(screen(), " Connections ") && sql_key
+caught        sql: a commented connection in the picker (test_sql_editor) :: tests/test_sql_editor.c:390: CHECK(strstr(picked(), "ms/master ") && strstr(picked(), "srv ") && strstr(picked(), "pgs ") && !strstr(picked(), "dir") 
+caught        sql: a connection line with too few fields in the picker (test_sql_editor) :: tests/test_sql_editor.c:390: CHECK(strstr(picked(), "ms/master ") && strstr(picked(), "srv ") && strstr(picked(), "pgs ") && !strstr(picked(), "dir") 
+caught        sql: a connection lists another's databases whose name it starts (test_sql_editor) :: tests/test_sql_editor.c:433: CHECK(strstr(picked(), " pgms/master ") && strstr(picked(), " pg/postgres ") && !strstr(picked(), " pg/master")) failed
+caught        sql: a key before the databases come keeps the picker waiting (test_sql_editor) :: tests/test_sql_editor.c:436: CHECK(strstr(e.msg, "sql: srvx: ") && strstr(e.msg, "nohost.invalid") && !strstr(screen(), " Connections ")) failed
+caught        sql: a name matches a longer name's start (test_sql_editor) :: tests/test_sql_editor.c:402: CHECK(!sql_disconnect(&e) && sql_connect(&e, "nope/hcs") && strstr(e.msg, "no connection nope") && sql_connect(&e, "sr") 
+caught        sql: every database of a live connection marked (test_sql_editor) :: tests/test_sql_editor.c:416: CHECK(strstr(picked(), " srv/hcs \xe2\x9c\x93 ") && !strstr(picked(), " srv/master \xe2\x9c\x93") && !strstr(picked(), " 
+caught        sql: name/db on a server-alone line counts as alone (test_sql_editor) :: tests/test_sql_editor.c:415: CHECK(!strcmp(sql_status(&e, e.buf), "srv/hcs") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strs
+caught        sql: the catalog of a buffer that is not .sql (test_sql_editor) :: tests/test_sql_editor.c:382: CHECK(!core_edit_file(&e, "ms/y.txt", 0) && !sql_catalog(&e, e.buf, "hcat", hcat, cat)) failed
+caught        sql: the folder's connection looked up at every frame (test_sql_editor) :: tests/test_sql_editor.c:398: CHECK(cf && fprintf(cf, "dir %s/msx ms\n", dir) > 0 && !fclose(cf) && !sql_status(&e, e.buf) && !strstr(screen(), " o.sql
+caught        sql: the picker does not open again with a server's databases (test_sql_editor) :: tests/test_sql_editor.c:412: CHECK(!strcmp(sql_status(&e, e.buf), "srv") && strstr(screen(), " Connections ")) failed
+caught        sql: the picker empty with no word why (test_sql_editor) :: tests/test_sql_editor.c:162: CHECK((*e.msg = 0, !sql_connect(&e, "")) && strstr(e.msg, "no connections file") && tools_key(&e, KEY_ESC) && tools_key(&
+caught        sql: the picker lists no connections (test_sql_editor) :: tests/test_sql_editor.c:162: CHECK((*e.msg = 0, !sql_connect(&e, "")) && strstr(e.msg, "no connections file") && tools_key(&e, KEY_ESC) && tools_key(&
+caught        sql: the picker opens under the terminal (test_sql_editor) :: tests/test_sql_editor.c:429: CHECK(tools_term() && strstr(picked(), "srv/hcs") && !strstr(screen(), " Connections ") && (keys_input(&e, KEY_CTRL_DOT, 
+caught        sql: the picker's Enter connects nothing (test_sql_editor) :: tests/test_sql_editor.c:411: CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && strstr(picked(), "srv/my db ") && !strstr(picked
+caught        sql: the picker's live mark not cut by :Connect (test_sql_editor) :: tests/test_sql_editor.c:417: CHECK(!sql_connect(&e, "srv/hcs \xe2\x9c\x93") && !strcmp(sql_status(&e, e.buf), "srv/hcs")) failed
+caught        sql: the running status line's text (review) :: tests/test_sql_editor.c:613: CHECK(!strncmp(e.wins->next->buf->status, "Executing query... \xc2\xb7 ms / master", 26)) failed
+caught        sql: the status line without the connection (test_sql_editor) :: tests/test_sql_editor.c:389: CHECK(!core_edit_file(&e, "ms/cn.sql", 0) && !strcmp(sql_status(&e, e.buf), "ms") && strstr(screen(), " cn.sql  ms ")) fa
+30 of 30 caught

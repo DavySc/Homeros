@@ -1,0 +1,331 @@
+=== p179 first
+no key yet: status [ms] msg ["ms/first.sql" 1L, 22B]
+ NORMAL  first.sql  ms                                                sql · utf-8    1:1   Top 
+"ms/first.sql" 1L, 22B
+after j: status [ms] msg ["ms/first.sql" 1L, 22B]
+ NORMAL  first.sql  ms                                                sql · utf-8    1:1   Top 
+"ms/first.sql" 1L, 22B
+=== p179 list
+fresh: picker items: [ms] [pg] [srv] [pgs] [longname]
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ >                                                                        5/5 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │ ms                                                                           │
+~         │ pg                                                                           │
+~         │ srv                                                                          │
+~         │ pgs                                                                          │
+~         │ longname                                                                     │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         ╰──────────────────────────────────────────────────────────────�
+~         ╭──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL ╰─────────────────────────────────────────────────────────────
+picked #old: status [ms] msg []
+=== p179 spacedb
+picked srv: status [srv] msg [sql: srv (127.0.0.1): its databases come in the picker]
+waited 70 ms
+after: picker items: [ms] [pg] [srv] [srv/hcs] [srv/hcs2] [srv/hct] [srv/hjp] [srv/master] [srv/model] [srv/msdb] [srv/my db] [srv/tempdb] [srv/中中中中中中中中中中中中中中中中中中�
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ >                                                                      15/15 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │ ms                                                                           │
+~         │ pg                                                                           │
+~         │ srv                                                                          │
+~         │ srv/hcs                                                                      │
+~         │ srv/hcs2                                                                     │
+~         │ srv/hct                                                                      │
+~         │ srv/hjp                                                                      │
+~         │ srv/master                                                                   │
+~         │ srv/model                                                                    │
+~         │ srv/msdb                                                                     │
+~         ╰──────────────────────────────────────────────────────────────�
+~         ╭──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL ╰─────────────────────────────────────────────────────────────
+sql: srv (127.0.0.1): its databases come in the picker
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ > mydb                                                                  1/15 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │ srv/my db                                                                    │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         ╰──────────────────────────────────────────────────────────────�
+~         ╭──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL ╰─────────────────────────────────────────────────────────────
+sql: srv (127.0.0.1): its databases come in the picker
+picked srv/my db: status [srv/my db] msg [sql: srv/my db (127.0.0.1)]
+  │ d    
+──┼──────
+1 │ my db
+(1 row)
+── Messages ────────
+(1 row affected)
+Completion time: 11 ms
+after F5: status [srv/my db ✓] msg [sql: srv/my db (127.0.0.1)]
+typed :Connect srv/my db: status [srv/my db] msg [sql: srv/my db (127.0.0.1)]
+=== p179 pgspace
+picked pgs: status [pgs] msg [sql: pgs (127.0.0.1): its databases come in the picker]
+waited 80 ms
+after: picker items: [ms] [pg] [srv] [pgs] [pgs/My Db] [pgs/postgres] [longname]
+picked: status [pgs/My Db] msg [sql: pgs/My Db (127.0.0.1)]
+  │ d    
+──┼──────
+1 │ My Db
+(1 row)
+── Messages ────────
+(SELECT 1)
+Completion time: 14 ms
+after F5: status [pgs/My Db ✓] msg [sql: pgs/My Db (127.0.0.1)]
+=== p179 term
+picked srv: status [srv] msg [sql: srv (127.0.0.1): its databases come in the picker]
+waited 80 ms
+1   select db_name() as d
+~    ╭─────────────────────────────────────── Terminal ─────────────────────�
+~    │echo hiroot@vm:~# echo hi                                                               │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    ╰────────────────────────────────────────────────────────────────
+ NORMAL  first.sql  srv                                               sql · utf-8    1:1   Top 
+sql: srv (127.0.0.1): its databases come in the picker
+after typing zz Enter:
+1   select db_name() as d
+~    ╭─────────────────────────────────────── Terminal ─────────────────────�
+~    │root@vm:~# echo hizz                                                                    │
+~    │hizz                                                                                    │
+~    │root@vm:~#                                                                              │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    │                                                                                        │
+~    ╰────────────────────────────────────────────────────────────────
+ NORMAL  first.sql  srv                                               sql · utf-8    1:1   Top 
+sql: srv (127.0.0.1): its databases come in the picker
+then: status [srv] msg [sql: srv (127.0.0.1): its databases come in the picker]
+terminal shut:
+1   select db_name() as d
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+=== p179 key
+waited 70 ms
+~
+ NORMAL  first.sql  srv                                               sql · utf-8    1:1   Top 
+sql: srv (127.0.0.1): its databases come in the picker
+=== p179 long
+connect 0
+connect long: status [nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+waited 70 ms
+after: picker items: [ms] [pg] [srv] [pgs] [nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+=== p179 nofile
+no dir line: status [(null)] msg ["none/a.sql" 1L, 9B]
+ NORMAL  a.sql                                                        sql · utf-8    1:1   Top 
+"none/a.sql" 1L, 9B
+no file: status [(null)] msg [sql: no connections file /tmp/p1790S5SNA/homeros/sql (src/sql/README.md)]
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ >                                                                        0/0 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         ╰──────────────────────────────────────────────────────────────�
+~         ╭──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL ╰─────────────────────────────────────────────────────────────
+sql: no connections file /tmp/p1790S5SNA/homeros/sql (src/sql/README.md)
+=== p179 live
+ms run: status [ms ✓] msg ["ms/first.sql" 1L, 22B]
+pg before: status [pg] msg ["pg/a.sql" 1L, 31B]
+pg run: status [pg ✓] msg ["pg/a.sql" 1L, 31B]
+two live: picker items: [ms ✓] [pg ✓] [srv] [pgs] [longname]
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ >                                                                        5/5 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │ ms ✓                                                                         │
+~         │ pg ✓                                                                         │
+~         │ srv                                                                          │
+~         │ pgs                                                                          │
+~         │ longname                                                                     │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL │                                                                              │1   Top 
+  │ d     │                                                                              │
+──┼───────│                                                                              │
+1 │ postgr╰─────────────────────────────────────────────────────────────�
+(1 row)   ╭──────────────────────────────────────────────────────────────�
+          │                                                                              │
+── Message│                                                                              │
+(SELECT 1)│                                                                              │
+          │                                                                              │
+Completion│                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ ✓ Query e╰─────────────────────────────────────────────────────────────�
+picked ms in the pg buffer: status [ms] msg [sql: ms (127.0.0.1)]
+ ✓ Query executed successfully · 1 row · 00:00:00.014 · pg / postgres                          9:1
+sql: ms (127.0.0.1)
+── Messages ────────
+Msg 195, Level 15, State 10, Line 1
+'current_database' is not a recognized built-in function name.
+Completion time: 15 ms
+after F5: status [ms ✓] msg [sql: ms (127.0.0.1)]
+then: picker items: [ms ✓] [pg] [srv] [pgs] [longname]
+=== p179 again
+twice: status [srv] msg [sql: srv (127.0.0.1): its databases come in the picker]
+waited 70 ms
+1   select╭──────────────────────────────── Connections ──────────────────────────
+~         │ >                                                                      15/15 │
+~         ├──────────────────────────────────────────────────────────────�
+~         │ ms                                                                           │
+~         │ pg                                                                           │
+~         │ srv                                                                          │
+~         │ srv/hcs                                                                      │
+~         │ srv/hcs2                                                                     │
+~         │ srv/hct                                                                      │
+~         │ srv/hjp                                                                      │
+~         │ srv/master                                                                   │
+~         │ srv/model                                                                    │
+~         │ srv/msdb                                                                     │
+~         ╰──────────────────────────────────────────────────────────────�
+~         ╭──────────────────────────────────────────────────────────────�
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+~         │                                                                              │
+ NORMAL ╰─────────────────────────────────────────────────────────────
+sql: srv (127.0.0.1): its databases come in the picker
+  │ d     
+──┼───────
+1 │ master
+(1 row)
+── Messages ────────
+(1 row affected)
+Completion time: 11 ms
+srv live: status [srv ✓] msg [sql: srv (127.0.0.1): its databases come in the picker]
+srv live: picker items: [ms] [pg] [srv ✓] [srv/hcs] [srv/hcs2] [srv/hct] [srv/hjp] [srv/master] [srv/model] [srv/msdb] [srv/my db] [srv/tempdb] [srv/中中中中中中中中中中中中中中中中�
+=== p179 dir
+dir ms/hcs: status [ms/hcs] msg ["dd/a.sql" 1L, 22B]
+  │ d  
+──┼────
+1 │ hcs
+(1 row)
+── Messages ────────
+(1 row affected)
+Completion time: 20 ms
+after F5: status [ms/hcs ✓] msg ["dd/a.sql" 1L, 22B]
+:Connect ms/: status [ms/] msg [sql: ms/ (127.0.0.1)]
+  │ d     
+──┼───────
+1 │ master
+(1 row)
+── Messages ────────
+(1 row affected)
+Completion time: 12 ms
+:Connect pg/: status [pg/] msg [sql: pg/ (127.0.0.1)]
+── Messages ────────
+ERROR 42883: function db_name() does not exist (at character 8)
+Completion time: 17 ms
+after: status [pg/ ✓] msg [sql: pg/ (127.0.0.1)]
+=== p179 one hjp
+connect ms/hjp: 0
+databases after 100 ms
+now: status [ms/hjp ✓] msg [sql: ms/hjp (127.0.0.1)]
+=== p179 one hct
+connect ms/hct: 0
+databases after 80 ms
+now: status [ms/hct ✓] msg [sql: ms/hct (127.0.0.1)]
+=== p179 one hcs2
+connect ms/hcs2: 0
+databases after 80 ms
+now: status [ms/hcs2 ✓] msg [sql: ms/hcs2 (127.0.0.1)]

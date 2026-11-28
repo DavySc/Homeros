@@ -1,0 +1,9 @@
+baseline: no change (must be NOT CAUGHT)~test TESTS=sql_editor~~src/sql/sql.c~		s->looked = 1;~		s->looked = 1;
+review 2: sql_status leaves E as it was~test TESTS=sql_editor~~src/sql/sql.c~	E = e;¶	Sess *s = conn(b);~	(void)e;¶	Sess *s = conn(b);
+review 2: the results' status line names name/db, then the database again~test TESTS=sql_editor~~src/sql/sql.c~ms / 1000 % 60, ms % 1000, (int)strcspn(s->spec.name, "/"), s->spec.name, s->spec.db);~ms / 1000 % 60, ms % 1000, (int)strlen(s->spec.name), s->spec.name, s->spec.db);
+review 2: the mark cut from a name that only ends in a check mark~test TESTS=sql_editor~~src/sql/sql.c~!strcmp(name + n - 4, " \xe2\x9c\x93") ? 4 : 0;~!strcmp(name + n - 3, "\xe2\x9c\x93") ? 4 : 0;
+review 2: the picker's list kept when the file is gone~test TESTS=sql_editor~~src/sql/sql.c~		if (lookup("", NULL, NULL, &names)) return NULL;~		lookup("", NULL, NULL, &names);
+review: a connection previewed as a file~test TESTS=sql_editor~~src/tools/pick.c~	if (want < 0 || P.what == PICK_SQL) return;~	if (want < 0) return;
+review: the picker's list grows at each opening~test TESTS=sql_editor~~src/sql/sql.c~		items.n = at = n = names.n = 0;~		at = n = names.n = 0;
+review: Enter leaves the picker open~test TESTS=sql_editor~~src/tools/pick.c~		close_picker();¶		sql_connect(e, c);~		sql_connect(e, c);
+review: a failed read keeps the picker waiting~test TESTS=sql_editor~~src/sql/sql.c~	if (mine) *pickfor = 0;¶~
