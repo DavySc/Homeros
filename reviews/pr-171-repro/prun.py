@@ -17,8 +17,10 @@ for line in open(pf):
     open(file, "w").write(src.replace(old, new))
     try:
         if os.path.exists("/tmp/rv/t_pl"): os.remove("/tmp/rv/t_pl")
+        ob = "build/rvobj/" + file.replace("/", "_") + ".o"   # a plant that does not compile must not link the last plant's object
+        if os.path.exists(ob): os.remove(ob)
         b = subprocess.run(["/tmp/rv/mk.sh", ".", "tests/test_%s.c" % t, "/tmp/rv/t_pl"], capture_output=True, text=True)
-        if b.returncode or not os.path.exists("/tmp/rv/t_pl"): print("BUILD FAIL   ", name, b.stderr[-300:], flush=True); continue
+        if b.returncode or not os.path.exists("/tmp/rv/t_pl") or (file.startswith("src/") and not os.path.exists(ob)): print("BUILD FAIL   ", name, b.stderr[-300:], flush=True); continue
         try:
             r = subprocess.run(["/tmp/rv/t_pl"], capture_output=True, text=True, env=env, timeout=300)
             ok = r.returncode != 0
