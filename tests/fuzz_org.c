@@ -170,6 +170,15 @@ static void check_fx(const char *s, size_t n, const uint8_t *d, size_t dn)
 	orgfx_free(x); orgfx_free(y); text_free(T); text_free(U);
 }
 
+/* org_open ends (libFuzzer's timeout catches a loop), lands in the text
+   and writes a string */
+static void check_open(const char *s, size_t n, size_t pos)
+{
+	OrgOpen o;
+	if (org_open(s, n, pos, &o)) return;
+	if (o.kind < ORG_OPEN_GOTO || o.kind > ORG_OPEN_MENU || (o.kind == ORG_OPEN_GOTO && o.pos > n) || !memchr(o.s, 0, sizeof o.s)) abort();
+}
+
 static void check_todo(const char *s, size_t n, size_t pos, int dir)
 {
 	static char t[1 << 15];
@@ -207,7 +216,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		":LOGBOOK:", ":ID: x", "SCHEDULED: <2026-11-22 Sun .+1d>", "CLOCK: [2026-11-01 Sun 09:00]--[2026-11-01 Sun 10:30] =>  1:30",
 		"# ", "#+NAME: x", "#+CAPTION[a]: b", "#+RESULTS:", "#+TBLFM: $1=2", "#+CALL: f[", "]", "(", ")", "<2026-11-22 Sun 9:00-10:30 .+1d/3d -2d>", "--", "<%%(x) 9:00>", "CLOSED: ", "DEADLINE: ", " => 1:30", "[2026-01-02]", "| a |",
 		"|-", "+--+", ": x", "-----", "%%(x)", "[fn:1] ", "\\begin{x}", "\\end{x}", "TODO ", "DONE ", "[#A] ",
-		"COMMENT ", ":a:b:", "x", "y", "é", "#", ":", "|", "[", "\r" };
+		"COMMENT ", ":a:b:", "x", "y", "é", "#", ":", "|", "[", "\r", "[[", "]]", "][", "<<", ">>", "<<<", ">>>",
+		"[fn:", "[fn:1]", "*b*", "=v=", "_", "^", "\\alpha", "\\", "$", "@@", "{{{", "}}}", "[cite:@k", ";", "radio",
+		"https://x", "file:", "<http:", "call_f(", "src_c{", "#cid", "(ref:a)", ":CUSTOM_ID: ", "#+NAME: ", "\u00a0",
+		"ssh://h/", "<URL:", "me@x.org", "<a@b>", "www.", "HTTPS:", "\"", "\u0663", "\u00e9t\u00e9" };
 	static char s[1 << 14];
 	size_t len = 0, nf = sizeof frag / sizeof *frag;
 	for (size_t i = 0; i < n; i++) {
@@ -225,6 +237,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, size_t n)
 		check_edit(s, len, pos, del, q, ins);
 		check_fx(s, len, d, n);
 		check_todo(s, len, pos, d[1] & 1 ? 1 : -1);
+		while (pos > 0 && pos < len && (s[pos] & 0xc0) == 0x80) pos--;
+		check_open(s, len, pos);
 	}
 	return 0;
 }

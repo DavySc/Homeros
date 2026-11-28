@@ -1,5 +1,6 @@
 ;;; -*- lexical-binding: t -*-
-;; the advice tools/org_faces.el and tools/org_show.el share
+;; the advice tools/org_faces.el and tools/org_show.el share: footnote
+;; spans, and Org's own block-fontifier errors
 ;; Org's own parser fails on some texts (a CAPTION[...] with a blank inside
 ;; its brackets, left without an element), and its block fontifier hides the
 ;; error in a message and leaves the buffer half coloured: let it reach the

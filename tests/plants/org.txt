@@ -148,3 +148,27 @@ org: colours: valid() asked again for every reference on a line (long-line gate,
 org: colours: a definition's span put whole again for every reference below it (long-line gate, against a plain line)~test TESTS=org~~src/org/org.c~	if (a > r[1]) r[0] = r[1] = a;   /* every z is past the reference, so past r[0] */~	r[0] = r[1] = a;
 org: colours: the look ahead's link search from the reference's line, not the line below (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~Hit h[2] = { { c->fq, c->fq }, { c->fq, c->fq } };~Hit h[2] = { { l, l }, { l, l } };
 org: colours: a line's end looked for again at every byte, plain lines too (the plain line against its first sixteenth)~test TESTS=org~~src/org/org.c~	for (p = l; p < e; p++)   /* | *\(<[lrc]?[0-9]*>\) */~	for (p = l; p < eol(l); p++)   /* | *\(<[lrc]?[0-9]*>\) */
+org: open: a footnote's definition at its begin, not after its label~test TESTS=org~~src/org/org.c~			return (x = fn_at(d, la, lz, "]:")) ? x : d;~			return d;
+org: open: no radio links~test TESTS=org~~src/org/org.c~	if (RN && radio_at(bolp(p) ? p : uni_prev(S, N, p), &a, &z)) r~	if (0 && radio_at(bolp(p) ? p : uni_prev(S, N, p), &a, &z)) r
+org: open: verbatim holds objects~test TESTS=org~~src/org/org.c~	return t == O_CODE || t == O_VERB ? obj(o, t, p, c + 1, ORG_NONE, 0) : obj(o, t, p, c + 1, p + 1, c);~	return obj(o, t, p, c + 1, p + 1, c);
+org: open: a subscript's braces not its contents~test TESTS=org~~src/org/org.c~		return S[q] == '{' ? obj(o, t, p, z + 1, q + 1, z) : obj(o, t, p, z + 1, q, z + 1);~		return obj(o, t, p, z + 1, ORG_NONE, 0);
+org: open: tags take the colon after them (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~pos >= x && pos < r ? ORG_OPEN_TAGS~pos >= x && pos <= r ? ORG_OPEN_TAGS
+org: open: a statistics cookie part of a heading's words (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		k = x < z && cookies && is(x, "[") && cookie(x, &c) ? c.e - x : 0;~		k = 0;
+org: open: any <<words>> a target (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~				if (c && OB[c - 1].t == O_TARGET) return~				if (c) return
+org: open: a custom id anywhere, not only in a property drawer (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ && (k = at_point(l)) != ORG_NONE && PE[k].type == ORG_NODE_PROPERTY)~ && (k = at_point(l)) != ORG_NONE)
+org: open: an object ending at the cursor not returned (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~			if (o.e == pos && !one(pos - 1, " \t")) last = o, ln = n;~
+org: open: the blanks after a definition's label not skipped (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ ? blanks(pos) < PE[el].cbeg~ ? pos < PE[el].cbeg
+org: open: a comment's link searched on its line only (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	for (lo = bol(pos), hi = eol(pos), z = k; z-- > 0; )~	for (lo = bol(pos), hi = eol(pos), z = 0; z-- > 0; )
+org: open: a citation one object (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return obj(o, O_CITE, p, c, b, y > k && !citekey(y, e) ? y : e);~	return obj(o, O_CITE, p, c, ORG_NONE, 0);
+org: open: the last NAME line not the element's name~test TESTS=org~~src/org/org.c~if (lit(blanks(z), "#+NAME:")) a = z;~;
+org: open: <URL:...> on the line not taken first (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if (y >= pos) return *a = x + 5~		if (0) return *a = x + 5
+org: open: an address's closing > left out (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	return q > p ? q + is(q, ">") : 0;~	return q > p ? q : 0;
+org: open: a URL after a parenthesis not cut at its closing one (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~ ? ')' : ']')) e = m;~ ? ')' : ']')) ;
+org: open: link types in the case written only (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~	FOLD = 1;¶~	FOLD = 0;¶
+org: open: a date range of three dashes~test TESTS=org~~src/org/org.c~			for (k = 1; k < 4 && is(z + k, "-"); k++) ;~			for (k = 1; k < 3 && is(z + k, "-"); k++) ;
+org: open: quotes in a message not escaped (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~		if ((*s == '"' || *s == '\\') && k < n) d[k++] = '\\';~		if (*s == '\\' && k < n) d[k++] = '\\';
+org: open: a link that stops early taken whole~test TESTS=org~~src/org/org.c~	if (ok && l.e == m) open_link(&l, o);~	if (ok) open_link(&l, o);
+org: open: FILE: an external link (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~(strncasecmp(Q, "file", 4) ||~(strncmp(Q, "file", 4) ||
+org: open: <URL:a@b> without mailto: (against Org)~org-conform ORG_N=2000 SEED=1~~src/org/org.c~) r = "mailto:";~) r = "";
+org: grow takes one step however far n is~test TESTS=org~~src/org/org.c~	while (c <= n) c *= 2;   /* past n, which may be more than one step on */~	if (c <= n) c *= 2;
+org: open: a target too long for OrgOpen.s cut~test TESTS=org~~src/org/org.c~ >= sizeof o->s)¶		return say(o, ORG_OPEN_ERROR, 0, "%s", "Link too long to open");~ >= sizeof o->s && 0)¶		return say(o, ORG_OPEN_ERROR, 0, "%s", "Link too long to open");

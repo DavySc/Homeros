@@ -17,7 +17,7 @@
                 ("sqsupset" . "⊐") ("sqcup" . "⊔") ("sqcap" . "⊓") ("bigvee" . "⋁") ("bigwedge" . "⋀")
                 ("subseteq" . "⊆") ("supseteq" . "⊇") ("mapsto" . "↦") ("models" . "⊨") ("vdash" . "⊢")
                 ("implies" . "⟹") ("iff" . "⟺") ("mid" . "∣"))))
-(load (expand-file-name "org_footnote.el" (file-name-directory load-file-name)) nil t)
+(load (expand-file-name "org_advice.el" (file-name-directory load-file-name)) nil t)
 ;; batch Emacs has no display to compose on: keep what Org asks for, one
 ;; cons a call, so that \Alpha\Alpha is two runs
 (advice-add 'compose-region :before

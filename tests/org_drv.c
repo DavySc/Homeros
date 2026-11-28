@@ -156,6 +156,30 @@ static int show(FILE *o, const char *b, size_t n)
 	return 0;
 }
 
+/* org_open at each position FILE.cmd lists (a byte, taken back to its
+   character's start, as Emacs's byte-to-position) */
+static int open_at(FILE *o, const char *file, const char *b, size_t n)
+{
+	static const char *const kind[] = { "goto", "file", "link", "error", "offer", "agenda", "tags", "result", "cite", "new", "menu" };
+	char path[4096];
+	size_t p;
+	snprintf(path, sizeof path, "%s.cmd", file);
+	FILE *g = fopen(path, "rb");
+	if (!g) return 1;
+	while (fscanf(g, "%zu", &p) == 1) {
+		OrgOpen r;
+		size_t q = p < n ? p : n;
+		while (q > 0 && q < n && (b[q] & 0xc0) == 0x80) q--;
+		if (org_open(b, n, q, &r)) return fclose(g), 1;
+		fprintf(o, "%zu %s", p, kind[r.kind]);
+		if (r.kind == ORG_OPEN_GOTO) fprintf(o, " %zu", r.pos);
+		if (r.kind <= ORG_OPEN_ERROR && r.kind != ORG_OPEN_GOTO) fprintf(o, " %s", r.s);
+		fprintf(o, "\n");
+	}
+	fclose(g);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	static char b[1 << 24];
@@ -163,6 +187,8 @@ int main(int argc, char **argv)
 	int todo = argc > 1 && !strcmp(argv[1], "-t");   /* -t: org_todo_step as FILE.cmd says, as tools/org_todo.el */
 	int conceal = argc > 1 && !strcmp(argv[1], "-s");   /* -s: what each line shows */
 	argv += conceal, argc -= conceal;
+	int opens = argc > 1 && !strcmp(argv[1], "-o");   /* -o: org_open at FILE.cmd's positions, as tools/org_open.el */
+	argv += opens, argc -= opens;
 	if (argc > 2 && !strcmp(argv[1], "-f")) w = strtoul(argv[2], NULL, 10), argv += 2, argc -= 2;
 	argv += todo, argc -= todo;
 	for (int i = 1; i < argc; i++) {
@@ -185,6 +211,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (conceal) { if (show(stdout, b, n)) return 3; continue; }
+		if (opens) { if (open_at(stdout, argv[i], b, n)) return 3; continue; }
 		if (w ? colours(stdout, b, n, w) : dump(stdout, b, n)) return 3;
 		for (size_t p = 0; !w && p < n; p++) {   /* org_ts at every character */
 			OrgTs t;

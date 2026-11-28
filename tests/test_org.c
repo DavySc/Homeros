@@ -1148,6 +1148,40 @@ int main(void)
 		free(got);
 		check_org(cases[i].text, n);
 	}
+	/* org_open where Emacs's org-open-at-point goes (tools/org_open.el, run
+	   on this text): a heading, a footnote and back, a custom id, a radio
+	   link, a target inside a subscript, the tags, a link inside verbatim;
+	   in a comment, what thing-at-point takes for a URL or an address, a
+	   range of dates; in a definition's caption, inside verbatim, the menu;
+	   an element named by its last NAME line */
+	static const char note[] = "* Lattice :order:\nSee [[*Lattice]] and [fn:1] and [[#cid]] and [[nope]].\n"
+		"<<<meet>>> is a meet; *the [[meet]]* x_{[[tgt]]}\n** B\n:PROPERTIES:\n:CUSTOM_ID: cid\n:END:\n"
+		"<<tgt>> https://x.org/a [[file:b.org::*X]] =[[tgt]]=\n[fn:1] The definition.\n"
+		"# ssh://h/x me@x.org. http://a(b <2026-11-27>---<2026-11-28>\n# <URL:www.x>\n#+CAPTION: x =vvv= y\n[fn:2] d\n"
+		"#+NAME: n1\n#+NAME: n2\n| [[n1]] [[n2]] |\n";
+	static const struct { size_t at; int kind; size_t to; const char *s; } opens[] = {
+		{ 26, ORG_OPEN_GOTO, 0, "" }, { 40, ORG_OPEN_GOTO, 221, "" }, { 53, ORG_OPEN_GOTO, 122, "" },
+		{ 66, ORG_OPEN_ERROR, 0, "No match for fuzzy expression: nope" }, { 103, ORG_OPEN_ERROR, 0, "No match for fuzzy expression: meet" },
+		{ 116, ORG_OPEN_GOTO, 162, "" }, { 179, ORG_OPEN_LINK, 0, "https //x.org/a" }, { 189, ORG_OPEN_FILE, 0, "b.org::*X" },
+		{ 209, ORG_OPEN_OFFER, 0, "" }, { 216, ORG_OPEN_GOTO, 39, "" }, { 12, ORG_OPEN_TAGS, 0, "" }, { 3, ORG_OPEN_OFFER, 0, "" },
+		{ 90, ORG_OPEN_GOTO, 73, "" }, { 242, ORG_OPEN_ERROR, 0, "No valid link in \"ssh://h/x\"" },
+		{ 252, ORG_OPEN_ERROR, 0, "Garbage after link in \"mailto:me@x.org.\" (\".\")" },
+		{ 269, ORG_OPEN_ERROR, 0, "Garbage after link in \"http://a(b\" (\"(b\")" }, { 284, ORG_OPEN_AGENDA, 0, "" },
+		{ 302, ORG_OPEN_LINK, 0, "https //www.x" }, { 325, ORG_OPEN_ERROR, 0, "Cannot find reference of footnote \"2\"" },
+		{ 327, ORG_OPEN_MENU, 0, "" }, { 369, ORG_OPEN_ERROR, 0, "No match for fuzzy expression: n1" }, { 376, ORG_OPEN_GOTO, 354, "" },
+	};
+	for (size_t i = 0; i < sizeof opens / sizeof *opens; i++) {
+		OrgOpen r;
+		CHECK(!org_open(note, sizeof note - 1, opens[i].at, &r) && r.kind == opens[i].kind);
+		CHECK(r.kind == ORG_OPEN_GOTO ? r.pos == opens[i].to : r.kind > ORG_OPEN_ERROR || !strcmp(r.s, opens[i].s));
+	}
+	{   /* a target too long for OrgOpen.s is an error, never cut (a cut one opens another) */
+		char l[640] = "https://x.org/";
+		OrgOpen r;
+		memset(l + 14, 'a', 600);
+		CHECK(!org_open(l, 614, 0, &r) && r.kind == ORG_OPEN_ERROR && !strcmp(r.s, "Link too long to open"));
+		CHECK(!org_open(l, 500, 0, &r) && r.kind == ORG_OPEN_LINK && strlen(r.s) == 500);
+	}
 	size_t k = 1;
 	OrgNode *e = org_parse("", 0, &k);
 	CHECK(e && k == 0);

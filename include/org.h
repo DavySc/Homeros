@@ -109,4 +109,19 @@ size_t orgfx_conceal(OrgFx *f, size_t line, Conceal *out, size_t cap);
    replaced by the *len bytes returned (valid until the next call);
    *a == *b and *len == 0 when nothing changes; NULL when out of memory. */
 const char *org_todo_step(const char *s, size_t n, size_t pos, int dir, long now, size_t *a, size_t *b, size_t *len);
+/* What org-open-at-point (Org 9.8.7) does at pos (a byte of s, at a
+   character's start), with Davy's settings (kitty-org.el: SPC o o, and RET
+   on a link): kind ORG_OPEN_GOTO moves the cursor to o->pos (pos itself
+   when Org does nothing); ORG_OPEN_FILE opens the file o->s (with its
+   ::search); ORG_OPEN_LINK opens o->s, "TYPE PATH" (https, mailto, id, ...);
+   ORG_OPEN_ERROR shows the message o->s; the rest name what Org opens
+   instead: a menu of the entry's links (OFFER), the agenda at a date
+   (AGENDA), the tags' agenda (TAGS), a source block's result (RESULT), a
+   citation (CITE), a new footnote (NEW), the footnote menu (MENU).  A
+   target over 511 bytes is ORG_OPEN_ERROR, never cut.  0 ok, -1 out of
+   memory. */
+enum { ORG_OPEN_GOTO, ORG_OPEN_FILE, ORG_OPEN_LINK, ORG_OPEN_ERROR, ORG_OPEN_OFFER, ORG_OPEN_AGENDA,
+       ORG_OPEN_TAGS, ORG_OPEN_RESULT, ORG_OPEN_CITE, ORG_OPEN_NEW, ORG_OPEN_MENU };
+typedef struct { int kind; size_t pos; char s[512]; } OrgOpen;
+int org_open(const char *s, size_t n, size_t pos, OrgOpen *o);
 #endif

@@ -1,7 +1,8 @@
 ;;; -*- lexical-binding: t -*-
 ;; Writes class.h: the code point ranges that Emacs's regexps in an org-mode
 ;; buffer take for [[:word:]], [[:alnum:]] and a few syntax classes, so the
-;; parser's classes are Emacs's own (copied from build A's class.el).
+;; parser's classes are Emacs's own (copied from build A's class.el).  A third
+;; element is a class taken out: DIGITS are the non-letters of [[:alnum:]].
 ;; emacs -Q --batch -l src/org/class.el > src/org/class.h
 (require 'org)
 (with-temp-buffer
@@ -12,11 +13,13 @@
                  ;; after a $ fragment's closing $ (org-element-latex-fragment-parser)
                  ("DPOST" . "\\(?:\\s.\\|\\s-\\|\\s(\\|\\s)\\|\\s\"\\|'\\)")
                  ;; parentheses, which scan-sexps counts whatever their pair
-                 ("OPENS" . "\\s(") ("CLOSES" . "\\s)")))
-    (let ((re (concat "\\`" (cdr spec) "\\'")) (c 0) start (case-fold-search nil))
+                 ("OPENS" . "\\s(") ("CLOSES" . "\\s)") ("DIGITS" "[[:alnum:]]" "[[:alpha:]]")))
+    (let ((re (concat "\\`" (if (consp (cdr spec)) (cadr spec) (cdr spec)) "\\'")) (c 0) start (case-fold-search nil)
+          (out (and (consp (cdr spec)) (concat "\\`" (caddr spec) "\\'"))))
       (princ (format "static const unsigned %s[][2] = {\n" (car spec)))
       (while (<= c #x110000)
-        (let ((m (and (<= c #x10ffff) (not (<= #xd800 c #xdfff)) (string-match-p re (string c)))))
+        (let ((m (and (<= c #x10ffff) (not (<= #xd800 c #xdfff)) (string-match-p re (string c))
+                     (not (and out (string-match-p out (string c)))))))
           (cond ((and m (not start)) (setq start c))
                 ((and (not m) start (not (<= #xd800 c #xdfff)))
                  (princ (format "{0x%x,0x%x},\n" start (1- c))) (setq start nil))))
