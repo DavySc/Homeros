@@ -1,0 +1,11 @@
+caught        syntax: a nested /- does not deepen a Lean comment, so its -/ ends the outer one (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: a Lean number's exponent is not tried after its fraction, so 3.5e-2 is plain (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: a Lean character's escape keeps the string's colour (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: an interpolated string's { stays in the string (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: Lean's keywords (theorem, where, fun) are plain (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: a doc comment's heading of only blanks to the line's end is not one, which VS Code's is (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: italic does not end at a single * before a pair, (?=\1\1) (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: a link definition's title ends at its first closing quote, while VS Code's .+? reaches one with only blanks after it (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: /- inside a doc comment's Markdown block deepens the comment, which VS Code's does not (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: a doc comment's code fence ends at a shorter fence (test_syntax_lean)   (make test TESTS=syntax_lean): tests/test_syntax_lean.c:82: CHECK(ncase && !bad) failed
+caught        syntax: an edit in Lean keeps token starts from earlier on its line, where a comment or string may begin (test_tsql)   (make test TESTS=tsql): tests/test_tsql.c:352: CHECK(!memcmp(f + wa, g + wa, z - wa)) failed

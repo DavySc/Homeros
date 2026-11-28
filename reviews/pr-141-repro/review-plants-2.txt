@@ -1,0 +1,19 @@
+rv2: the timer indexes with the popup open~x~~src/snip/snip.c~	if (e->pum == items) loop_timer(idle, NULL, HOLD);   /* the popup's words are in the pool */¶	else if~	if
+rv2: the index's statements stay where they were~x~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);¶~
+rv2: every word start indexes the file~x~~src/snip/snip.c~		I.len += nins - ndel;¶~
+rv2: an edit of the same length is never indexed~x~~src/snip/snip.c~		I.stale = 1;¶~
+rv2: a word at its statement's end walks the gap~x~~src/snip/snip.c~	if (j && a <= u[j - 1][1].at) s[0][0]~	if (j && a < u[j - 1][1].at) s[0][0]
+rv2: equal facts kept~x~~src/snip/snip.c~if (!k || by_fact(&f[k - 1], &f[i])) f[k++] = f[i];~if (1) f[k++] = f[i];
+rv2: [x] always loses its brackets~x~~src/snip/snip.c~		for (size_t j = 1; plain && j + 1 < d; j++) plain = alpha(b[j]) || digit(b[j]) || b[j] == '_';¶~
+rv2: a column of two tables listed twice~x~~src/snip/snip.c~		if (last && !strcmp(last->kind, c->kind) && !strcasecmp(pool.s + last->w, pool.s + c->w)) continue;¶~
+rv2: no popup kept as a result: a comment's keys walk again~x~~src/snip/snip.c~			W.ok = collect(e, ls + a, ls + col), W.b = e->buf,~			W.ok = collect(e, ls + a, ls + col), W.b = W.ok ? e->buf : NULL,
+rv2: an empty word keeps the list~x~~src/snip/snip.c~	} else W.b = NULL;¶	core_pum(e, items, n, -1, a);~	}¶	core_pum(e, items, n, -1, a);
+rv2: a buffer without an index waits a second for it~x~~src/snip/snip.c~loop_timer(idle, NULL, b == I.b ? HOLD : 0);~loop_timer(idle, NULL, HOLD);
+rv2: the timer never indexes~x~~src/snip/snip.c~		scan(e, (size_t)-1, (size_t)-1), W.b = NULL;~		W.b = NULL;
+rv2: the popup's check also holds before any popup (the review's fix)~x~~src/snip/snip.c~	if (e->pum == items) loop_timer(idle, NULL, HOLD);~	if (e->pum && e->pum == items) loop_timer(idle, NULL, HOLD);
+rv2: sqlfmt_units gives its units when its list cannot grow~x~~src/sqlfmt/sqlfmt.c~	return oom ? 0 : n;~	return n;
+rv2: MERGE and DELETE offer tables only~x~~src/snip/snip.c~	int words = !dot && (!tabs || (ctx[0].f & OR_WORD));~	int words = !dot && !tabs;
+rv2: variables among the @@ functions~x~~src/snip/snip.c~"Function" : "Keyword", NULL, at);~"Function" : "Keyword", NULL, 0);
+rv2: the index's statements stay where they were~x~~src/snip/snip.c~		for (size_t i = 0; i < NU; i++) splice(&u[i][0], pos, ndel, nins), splice(&u[i][1], pos, ndel, nins);¶~		(void)u;¶
+rv2: a column of two tables listed twice~x~~src/snip/snip.c~		if (last && !strcmp(last->kind, c->kind) && !strcasecmp(pool.s + last->w, pool.s + c->w)) continue;¶~		(void)last;¶
+rv2: FROM a, b: b no table~x~~src/snip/snip.c~ || (from && sym(h1, ','))~ || (0 && from && sym(h1, ','))

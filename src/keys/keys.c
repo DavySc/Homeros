@@ -128,7 +128,7 @@ static const struct { const char *lhs, *desc; } maps[] = {
 	{ " ,", "Buffers" },
 	/* Emacs's C-x 5 frame keys, as SPC 5 (C-x is Vim's decrement) */
 	{ " 5", "+frame" }, { " 50", "Delete frame" }, { " 51", "Delete other frames" }, { " 52", "New frame" },
-	{ " 5f", "Find file in new frame" }, { " 5m", "Move window to frame" }, { " 5o", "Other frame" },
+	{ " 5f", "Find file in new frame" }, { " 5m", "Move window to frame" }, { " 5n", "Frame letter" }, { " 5o", "Other frame" },
 	{ " c", "+compile" }, { " cc", "Compile" }, { " cC", "Recompile" },
 	{ " D", "Dashboard" },
 	{ " e", "File Explorer" },
@@ -146,8 +146,9 @@ static const struct { const char *lhs, *desc; } maps[] = {
 };
 enum { NMAPS = sizeof maps / sizeof *maps };
 static int lead[3], nlead;   /* the keys typed of a map not yet complete */
-static int tabmove;          /* SPC 5 m typed: the next key is the frame's number */
+static int frame;            /* SPC 5 m or n typed: the next key is a frame's letter */
 static int hint;             /* which-key's panel is shown */
+static int wtop, wh, wmax;   /* its first line shown, its height, the last first line */
 
 /* m is a map of this buffer and mode: in Visual mode only SPC i s, a
    snippet around the area (package 19's, agreed), and its group */
@@ -160,7 +161,7 @@ static int usable(const char *m)
 static int typed(const char *m)
 {
 	int j = 0;
-	while (j < nlead && m[j] == lead[j]) j++;
+	while (j < nlead && m[j] && m[j] == lead[j]) j++;   /* a typed NUL is not the end */
 	return j;
 }
 
@@ -206,26 +207,31 @@ void keys_draw(Editor *e, Grid *g)
 		}
 	int cols = g->cols / (w + 3) > 1 ? g->cols / (w + 3) : 1, h = (n + cols - 1) / cols;
 	if (h < 2) h = 2;
-	if (h > g->rows - 4) h = g->rows - 4;
-	int top = g->rows - h - 4, last = g->rows - 2;
+	int H = h + 3 < g->rows - 1 ? h + 3 : g->rows - 1, top = g->rows - 1 - H, last = g->rows - 2;
 	/* which-key's no_overlap (view.lua's check_overlap()): over the
 	   cursor's row or the one above it, the panel starts 2 rows below the
 	   cursor, at least 4 high, and Neovim moves the float up to fit
-	   (nvim_open_win's fixed off); the rows that no longer fit are cut */
+	   (nvim_open_win's fixed off) */
 	if (g->crow >= top - 1 && g->crow <= last) {
-		last = g->rows - 1;
 		top = g->crow + 2 < g->rows - 4 ? g->crow + 2 : g->rows - 4;
-		h = last - top - 2;
+		last = g->rows - 1;
+		H = g->rows - top;
 	}
-	if (h < 1 || top < 0) return;   /* a screen under 4 rows: no room */
+	if (top < 0 || H < 4) return;   /* a screen under 4 rows: no room */
+	/* the panel shows H of its h + 3 lines (a blank, the h rows, a blank,
+	   and the empty line the footer covers) from line wtop, which <c-d>
+	   and <c-u> move (Win:scroll()) */
+	wh = H, wmax = h + 3 - H;
+	if (wtop > wmax) wtop = wmax;   /* the screen changed since the key */
 	w = g->cols / cols;
-	grid_blank(g, top, 0, h + 3, g->cols);
-	for (int k = 0, prev = -1; k < n && k / h < cols; k++) {
+	grid_blank(g, top, 0, H, g->cols);
+	for (int k = 0, prev = -1; k < n; k++) {
 		int b = -1;
 		for (int i = 0; i < NMAPS; i++)
 			if (child(i) && rank(i) > prev && (b < 0 || rank(i) < rank(b))) b = i;
 		prev = rank(b);
-		int c = 2 + 3 + k / h * w, r = top + 1 + k % h;
+		int c = 2 + 3 + k / h * w, r = top + 1 + k % h - wtop;
+		if (r < top || r >= last) continue;
 		const char *d = maps[b].desc;
 		char key[2] = { maps[b].lhs[nlead], 0 };
 		c = grid_str(g, r, c, key, FACE_NORMAL_FLOAT);
@@ -241,11 +247,16 @@ void keys_draw(Editor *e, Grid *g)
 		c = grid_str(g, last, c, i ? " \xc2\xbb " : "", FACE_WK_SEPARATOR);
 		c = grid_str(g, last, c, s, FACE_WK_GROUP);
 	}
-	c = (g->cols - 22) / 2 > c ? (g->cols - 22) / 2 : c;
+	int cut = H < h + 3, hw = cut ? 41 : 22;   /* the help's width */
+	c = (g->cols - hw) / 2 > c ? (g->cols - hw) / 2 : c;
 	c = grid_str(g, last, c, "<esc>", FACE_NORMAL_FLOAT);
 	c = grid_str(g, last, c, " close  ", FACE_WK_SEPARATOR);
 	c = grid_str(g, last, c, "<bs>", FACE_NORMAL_FLOAT);
-	grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
+	c = grid_str(g, last, c, " back", FACE_WK_SEPARATOR);
+	if (cut) {
+		c = grid_str(g, last, c, "  <c-d>/<c-u>", FACE_NORMAL_FLOAT);
+		grid_str(g, last, c, " scroll", FACE_WK_SEPARATOR);
+	}
 	for (int i = top * g->cols; i < (last + 1) * g->cols; i++) g->c[i].bg = FACE_NORMAL_FLOAT;
 }
 
@@ -253,19 +264,57 @@ void keys_draw(Editor *e, Grid *g)
    (:enew) (package 5's, agreed) */
 static void dashboard(Editor *e) { if (!core_edit_file(e, "", 0)) tools_dash(e, 0); }
 
+/* a frame's letter: one SPC 5 has no key of its own for */
+static int letter(int k) { return k >= 'a' && k <= 'z' && !strchr("fmno", k); }
+
+/* the number of the frame with letter k, 0 if none has it */
+static int frame_nr(const Editor *e, int k)
+{
+	int n = 1;
+	if (letter(k))
+		for (const Tab *t = e->tabs; t; t = t->next, n++) if (t->key == k) return n;
+	return 0;
+}
+
+/* SPC 5 n {letter}: one no other frame has */
+static int frame_key(Editor *e, int k)
+{
+	if (!letter(k) || (frame_nr(e, k) && e->tab->key != k)) return -1;
+	e->tab->key = (char)k;
+	return 0;
+}
+
+/* a map, a frame jump or a beep ends the leader keys and the count before them */
+static void lead_end(Editor *e)
+{
+	nlead = e->ks.pending = 0;
+	hint_end();
+	normal_mappable(1);
+}
+
 /* A map completed runs; one that may still be
    completed waits (a lone SPC as with which-key, without 'timeoutlen');
    otherwise the first key runs unmapped and the rest are checked again
    (Neovim's vgetorpeek() when no map matches) */
 static int map(Editor *e, int k)
 {
-	if (tabmove) {
-		tabmove = e->ks.pending = 0;
-		if (k < '1' || k > '9' || core_win_to_tab(e, k - '0')) beep();
+	if (frame) {
+		int f = frame;
+		frame = e->ks.pending = 0;
+		int n = frame_nr(e, k);
+		if (f == 'm' ? !n || core_win_to_tab(e, n) : frame_key(e, k)) beep();
 		return 1;
 	}
 	if (!nlead && (e->mode != MODE_NORMAL || !normal_mappable(0))) return 0;
 	E = e;   /* for is_ft() and the maps that edit */
+	/* which-key's <c-d> and <c-u> scroll the panel half its height
+	   (state.lua); any other key shows a list from its top */
+	if (hint && (k == 4 || k == 21)) {
+		wtop += (k == 4 ? wh + 1 : -wh) / 2;   /* ceil((up and -1 or 1) * height / 2) */
+		wtop = wtop < 0 ? 0 : wtop > wmax ? wmax : wtop;
+		return 1;
+	}
+	wtop = 0;
 	/* after Space, which-key's <Esc> closes (and ends a count, a register
 	   or Visual mode, as Esc does), <BS> goes up a level; from the first
 	   which-key goes to the root, the list of every Normal key, which has
@@ -278,6 +327,12 @@ static int map(Editor *e, int k)
 		return 1;
 	}
 	lead[nlead++] = k;
+	int to = nlead == 3 && lead[0] == ' ' && lead[1] == '5' ? frame_nr(e, k) : 0;
+	if (to) {   /* SPC 5 {letter}: that frame */
+		lead_end(e);
+		goto_tabpage(to);
+		return 1;
+	}
 	int part = 0;
 	for (int i = 0; i < NMAPS; i++) {
 		const char *m = maps[i].lhs;
@@ -285,9 +340,7 @@ static int map(Editor *e, int k)
 		if (!usable(m) || j < nlead) continue;
 		if (m[j]) { part = 1; continue; }
 		if (*maps[i].desc == '+') continue;
-		nlead = e->ks.pending = 0;
-		hint_end();
-		normal_mappable(1);
+		lead_end(e);
 		undo_close(e->buf->undo);   /* a map is a command of its own: keys_feed() closes before each */
 		switch (m[0] == '-' ? 'p' : !strcmp(m, " is") ? 's' : m[1]) {
 		case 'f': tools_pick(e, m[2] == 'f' ? PICK_SMART : m[2] == 'g' ? PICK_GREP : PICK_REGISTERS); break;
@@ -301,7 +354,7 @@ static int map(Editor *e, int k)
 		case 'D': dashboard(e); break;
 		/* C-x 5 2 make-frame, 5 f find-file-other-frame (the picker in a
 		   new frame), 5 o other-frame, 5 0 delete-frame, 5 1
-		   delete-other-frames; 5 m {n} moves the window to frame n
+		   delete-other-frames; 5 m {letter} moves the window to that frame
 		   (DESIGN.md, New approaches) */
 		case '5':
 			switch (m[2]) {
@@ -310,7 +363,7 @@ static int map(Editor *e, int k)
 			case 'o': goto_tabpage(0); break;
 			case '0': core_tabclose(e, NULL); break;
 			case '1': core_tabonly(e); break;
-			default: tabmove = e->ks.pending = 1;
+			default: frame = m[2]; e->ks.pending = 1;
 			}
 			break;
 		case 's': tools_pick(e, PICK_SNIPPETS); break;
@@ -336,6 +389,11 @@ static int map(Editor *e, int k)
 	memcpy(l, lead, sizeof l);
 	nlead = 0;
 	if (n == 1) return 0;
+	if (n == 3 && l[1] == '5' && l[0] == ' ') {   /* SPC 5 and no frame's key: beep, as SPC 5 m and n do (Visual mode has no SPC 5 map) */
+		lead_end(e);
+		beep();
+		return 1;
+	}
 	hint_end();
 	keys_feed(e, l[0], 1);
 	/* the rest as typed: a picker, the dashboard or magit may take them
@@ -348,8 +406,8 @@ void keys_input(Editor *e, int k, int pending)
 {
 	/* keys.h KEY_FOCUS: what is half done ends, as Esc would end it */
 	if (k == KEY_FOCUS) {
-		int m = nlead || tabmove;
-		nlead = tabmove = 0;
+		int m = nlead || frame;
+		nlead = frame = 0;
 		hint_end();
 		if (e->mode == MODE_INSERT || e->ks.visual || (!m && (e->ks.pending || !normal_mappable(0)))) keys_feed(e, KEY_ESC, 0);
 		else e->ks.pending = 0;
@@ -410,7 +468,9 @@ void keys_write_pre(Editor *e, Buf *b)
 	E = e;
 	int k = b == e->buf ? fmt_kind() : 0;
 	const char *mark = k == 1 ? "sqldiff.toml" : ".slang";
-	if (k) {
+	/* Davy, 2026-11-23: "zig should format on every :w" */
+	if (k == 3) buf_format(0, text_len(B->text));
+	else if (k) {
 		if (B->path[0] != '/' && B->path[0] != '\\' && B->path[1] != ':') {
 			if (!getcwd(d, sizeof d - 1)) d[0] = 0;
 			n = strlen(d);

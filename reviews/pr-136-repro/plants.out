@@ -1,0 +1,20 @@
+caught        keys: gq sends verible the whole text, not its lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:117: CHECK(!strcmp(text(&e), "module m;\n  wire a;\n    wire b;\nendmodule\n")) failed
+caught        keys: :Format sends verible --lines (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:126: CHECK(!strcmp(disk(args), "--indentation_spaces=4 -\n")) failed
+caught        keys: verible's edit runs to the end of the text, so the cursor below it moves onto other text (test_keys_gq)   (make test TESTS=keys_gq): tests/test_keys_gq.c:125: CHECK(e.win->line == 3 && e.win->col == 8) failed
+caught        keys: :w leaves a Zig file as typed (test_keys_gq, zig)   (make test TESTS=keys_gq): tests/test_keys_gq.c:174: CHECK(!strcmp(disk(zf), F) && !strcmp(text(&e), F)) failed
+caught        keys: a whole-text format replaces the whole text, so a mark on a line it leaves is lost (test_keys_gq, zig)   (make test TESTS=keys_gq): tests/test_keys_gq.c:181: CHECK(!strcmp(text(&e), F) && e.buf->mark[0].set && e.buf->mark[0].line == 1) failed
+caught        keys: :Format on a Zig file that does not parse says nothing (test_keys_gq, zig)   (make test TESTS=keys_gq): tests/test_keys_gq.c:190: CHECK(!strcmp(text(&e), "fn f( {\n") && strstr(e.msg, "zig fmt")) failed
+caught        syntax: a fold ending at column 0 keeps that line (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:425: CHECK(syntax_foldexpr(s, l, &a) == syntax_foldexpr(f, l, &b) && a == b) failed
+caught        syntax: the same fold counted twice (test_syntax, folds)   (make test TESTS=syntax): tests/test_syntax.c:988: CHECK(!differ && !fdiffer && !snap_differ && !slice_differ && !pdiff) failed
+caught        syntax: Markdown's folds miss an edit that adds no line (test_syntax, folds after edits)   (make test TESTS=syntax): tests/test_syntax.c:568: CHECK(syntax_foldexpr(s, 1, &st) == 1 && st && syntax_foldexpr(s, 5, &st) == 1) failed
+caught        syntax: Zig's a.b() colours b as a field, not a call (test_syntax_zig, Neovim's colours)   (make test TESTS=syntax_zig): 8162 differences from Neovim not in tests/syntax-zig-known.txt (above)
+caught        syntax: Zig's folds count a span of one line (test_syntax_zig, Neovim's folds)   (make test TESTS=syntax_zig): tests/test_syntax_zig.c:177: CHECK(0) failed
+caught        syntax: Zig's else folds in an expression too (test_syntax_zig, Neovim's folds)   (make test TESTS=syntax_zig): tests/test_syntax_zig.c:177: CHECK(0) failed
+caught        syntax: a Zig member with a parse error keeps its tree's colours (test_syntax_zig, a member that does not parse)   (make test TESTS=syntax_zig): tests/test_syntax_zig.c:216: CHECK(bf[18] == FACE_VARIABLE && bf[strstr(B, "h()") - B + 15] == FACE_FUNCTION_CALL) failed
+caught        syntax: Zig's faces stay where they were when the text before them changes (test_syntax_zig, edits before a parse)   (make test TESTS=syntax_zig): tests/test_syntax_zig.c:194: CHECK(!memcmp(g2, got, at) && !memcmp(g2 + at + ni, got + at + del, was - at - del)) failed
+caught        syntax: Zig's parser is the release before the one on PATH (test_syntax_zig, zig fmt)   (make test TESTS=syntax_zig): tests/test_syntax_zig.c:276: CHECK(syntax_zig_fmt(s, &res, &rn) == -1) failed
+caught        syntax: Zig's char literals have no escapes (test_syntax_zig, Neovim's colours)   (make test TESTS=syntax_zig): 167 differences from Neovim not in tests/syntax-zig-known.txt (above)
+NOT CAUGHT    review: zig fmt formats the last parse's text, not the buffer's (stale after an edit)   (make test TESTS="keys_gq syntax_zig" passed)
+NOT CAUGHT    review: text typed into a Zig buffer keeps the colours of what was there until the parse   (make test TESTS=syntax_zig passed)
+NOT CAUGHT    review: a Zig member after one with "expected ;" keeps its tree's colours (broken's "or the one before it")   (make test TESTS=syntax_zig passed)
+rc=1

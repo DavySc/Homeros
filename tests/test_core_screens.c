@@ -175,8 +175,13 @@ static void token(Editor *e, Grid *g, const char *t)
 	}
 	if (!strcmp(t, "tabclose")) { core_tabclose(e, NULL); goto upd; }
 	if (!strcmp(t, "tabonly")) { core_tabonly(e); goto upd; }
-	/* SPC 5 m {n}: the keys, as Davy types them */
-	if (!strncmp(t, "tabm:", 5)) { keys_input(e, ' ', 1); keys_input(e, '5', 1); keys_input(e, 'm', 1); keys_input(e, t[5], 0); goto upd; }
+	/* SPC 5 m {letter of frame n}: the keys, as Davy types them; no frame n, a key no frame has */
+	if (!strncmp(t, "tabm:", 5)) {
+		const Tab *x = e->tabs;
+		for (char c = '1'; x && c < t[5]; c++) x = x->next;
+		keys_input(e, ' ', 1); keys_input(e, '5', 1); keys_input(e, 'm', 1); keys_input(e, x ? x->key : '{', 0);
+		goto upd;
+	}
 	/* the scrolling keys go through keys_feed as typed, count first, so
 	   keys update the wanted column first as Neovim's lazy curswant does
 	   (calling the core directly skipped that: PR 26) */

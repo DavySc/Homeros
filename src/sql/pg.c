@@ -136,7 +136,7 @@ static int message(Pg *p, char k, const char *s, size_t n)
 		for (uint32_t i = 0; i < c && s < e; i++) {
 			const char *z = memchr(s, 0, (size_t)(e - s));
 			if (!z || e - z < 19) return dead(p, "bad RowDescription");
-			if (!p->quiet && ((i && str_add(o, "\t", 1)) || net_esc(o, s, (size_t)(z - s)))) return -1;
+			if (!p->quiet && (str_add(o, i ? "\t" : NET_HEAD, 1) || net_esc(o, s, (size_t)(z - s)))) return -1;
 			s = z + 19;
 		}
 		p->sets++;
@@ -148,14 +148,14 @@ static int message(Pg *p, char k, const char *s, size_t n)
 		for (uint32_t i = 0; i < c; i++) {
 			uint32_t l = e - s >= 4 ? be(s, 4) : 0;
 			if (e - s < 4 || (s += 4, l != 0xFFFFFFFF && (size_t)(e - s) < l)) return dead(p, "bad DataRow");
-			if (!p->quiet && ((i && str_add(o, "\t", 1)) || (l == 0xFFFFFFFF ? str_add(o, "NULL", 4) : net_esc(o, s, l)))) return -1;
+			if (!p->quiet && (str_add(o, i ? "\t" : NET_ROW, 1) || (l == 0xFFFFFFFF ? str_add(o, NET_NULL, 5) : net_esc(o, s, l)))) return -1;
 			if (l != 0xFFFFFFFF) s += l;
 		}
 		p->rows++;
 		return p->quiet ? 0 : str_add(o, "\n", 1);
 	}
 	case 'C':   /* CommandComplete: its tag, as psql shows it */
-		return p->quiet ? 0 : str_add(o, "(", 1) || net_esc(o, s, n ? n - 1 : 0) || str_add(o, ")\n", 2);
+		return p->quiet ? 0 : str_add(o, NET_END "(", 3) || net_esc(o, s, n ? n - 1 : 0) || str_add(o, ")\n", 2);
 	case 'E': case 'N': {   /* severity, SQLSTATE: message (at character n) */
 		const char *f[256] = {0};
 		for (const char *q = s; q < e && *q;) {
@@ -166,8 +166,8 @@ static int message(Pg *p, char k, const char *s, size_t n)
 		if (k == 'E' && p->state < PG_READY) return dead(p, f['M'] ? f['M'] : "login failed");
 		if (p->quiet && f['C'] && !strcmp(f['C'], "57014")) return 0;   /* our own cancel */
 		const char *msg = f['M'] ? f['M'] : "";
-		return str_addf(o, "%s %s: ", f['V'] ? f['V'] : "ERROR", f['C'] ? f['C'] : "") || net_esc(o, msg, strlen(msg))
-			|| (f['P'] && str_addf(o, " (at character %s)", f['P'])) || str_add(o, "\n", 1);
+		return (k == 'E' && str_add(o, NET_ERR, 1)) || str_addf(o, "%s %s: ", f['V'] ? f['V'] : "ERROR", f['C'] ? f['C'] : "") || net_esc(o, msg, strlen(msg))
+			|| (f['P'] && str_addf(o, " (at character %s)", f['P'])) || (k == 'E' && str_add(o, NET_ERR, 1)) || str_add(o, "\n", 1);
 	}
 	}
 	return 0;   /* the rest (ParameterStatus, EmptyQueryResponse, notifications...) is not shown */

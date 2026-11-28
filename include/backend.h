@@ -54,6 +54,9 @@ typedef struct {
 	   says 0 x 0, so the core places no image there and the link text
 	   stays, as Emacs in a terminal shows it. */
 	void (*cell)(int id, int *w, int *h);
+	/* The OS window's title (xdg_toplevel.set_title, SetWindowTextW): its
+	   frame's SPC 5 letter; the terminal shows none */
+	void (*title)(int id, const char *s);
 } Backend;
 
 extern const Backend backend_tty;    /* src/tty, package 6 */

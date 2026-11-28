@@ -15,12 +15,8 @@
    initialize reply, every change applies, a new request cancels the last,
    a reply for each of its requests.  The test binary is also the fake
    server (run with --fake). */
-#include <fcntl.h>
-#include <poll.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -28,6 +24,7 @@
 #include "core.h"
 #include "loop.h"
 #include "lsp.h"
+#include "syntax.h"
 #include "text.h"
 #include "../src/lsp/json.h"
 
@@ -37,6 +34,68 @@ static long long ms(void)
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
 }
+
+/* What differs on Windows (src/lsp/check.sh runs this there): the fake's
+   stdin is a pipe poll cannot wait on, and paths are UTF-8 to the editor
+   but wide to the system, so the test's own calls convert them too. */
+#ifdef _WIN32
+#include <fcntl.h>
+#include <direct.h>
+#include <io.h>
+#include <windows.h>
+static const wchar_t *wide(const char *s)
+{
+	static wchar_t w[2][1024];
+	static int k;
+	k ^= 1;
+	return MultiByteToWideChar(CP_UTF8, 0, s, -1, w[k], 1024) ? w[k] : L"";
+}
+#define mkdir(p, m) _wmkdir(wide(p))
+#define rmdir(p) _wrmdir(wide(p))
+#define unlink(p) _wunlink(wide(p))
+#define fopen(p, m) _wfopen(wide(p), wide(m))
+#define setenv(k, v, o) _putenv_s(k, v)
+static void *memmem(const void *h, size_t n, const void *w, size_t k)
+{
+	for (const char *p = h; k <= n && p <= (const char *)h + n - k; p++) if (!memcmp(p, w, k)) return (void *)p;
+	return NULL;
+}
+static DWORD waiting(void)   /* bytes in the pipe; an end (an error) counts as some */
+{
+	DWORD n;
+	return PeekNamedPipe(GetStdHandle(STD_INPUT_HANDLE), NULL, 0, NULL, &n, NULL) ? n : 1;
+}
+static int ready(int t) { for (long long t0 = ms(); !waiting(); Sleep(1)) if (ms() - t0 >= t) return 0; return 1; }
+static void slashed(char *s) { for (; *s; s++) if (*s == '\\') *s = '/'; }
+static void self(char *exe, size_t n) { CHECK(GetModuleFileNameA(NULL, exe, (DWORD)n)); slashed(exe); }
+static int here(char *d, size_t n)
+{
+	wchar_t w[1024];
+	if (!_wgetcwd(w, 1024) || !WideCharToMultiByte(CP_UTF8, 0, w, -1, d, (int)n, NULL, NULL)) return 0;
+	slashed(d);
+	return 1;
+}
+static const char *tmp(void)
+{
+	static char t[1024];
+	wchar_t w[1024];
+	DWORD k = GetTempPathW(1024, w);
+	if (k) w[k - 1] = 0;   /* its last '\\' */
+	if (!k || !WideCharToMultiByte(CP_UTF8, 0, w, -1, t, sizeof t, NULL, NULL)) return "";
+	slashed(t);
+	return t;
+}
+#define LONGDIRS 1   /* MAX_PATH */
+#else
+#include <poll.h>
+#include <sys/ioctl.h>
+static int waiting(void) { int n = 0; return ioctl(0, FIONREAD, &n) == 0 && n > 0; }
+static int ready(int t) { struct pollfd pf = { 0, POLLIN, 0 }; return poll(&pf, 1, t) > 0; }
+static void self(char *exe, size_t n) { ssize_t k = readlink("/proc/self/exe", exe, n - 1); CHECK(k > 0); exe[k] = 0; }
+static int here(char *d, size_t n) { return getcwd(d, n) != NULL; }
+static const char *tmp(void) { return "/tmp"; }
+#define LONGDIRS 3
+#endif
 
 /* --- an independent UTF-16 reference: whole code points, valid UTF-8 ----- */
 
@@ -309,15 +368,91 @@ static size_t fbehind;   /* bytes read behind the message being handled */
    "done", and a message wholly past the end of a line holding '?'.  It says
    nothing else unasked. */
 static int gmode;
+/* The tokens test's server (seed "tokens"): semantic tokens for the words
+   tword names in the version asked about, answered tdelay ms later (Lean
+   answers once it has elaborated): 0 at once, $/test/slow 300,
+   $/test/hush never; $/test/talk answers all, newest first, so an answer
+   to a request cancelled since comes last.  A new request comes only
+   after the last was cancelled.  $/test/err: the next answer an error;
+   $/test/part: the next answer the first line's only (Lean's, before it
+   has elaborated the rest), then a refresh.  Every answer ends with a
+   token past the text's end. */
+static int tmode, ntok, terr, tpart, trefresh;
+static long long tdelay;
+static struct { long id, v; long long at; int cancelled; char u[1200]; } tok[16];
+/* the legend: these, then "function" up to 40 types (the editor keeps 32) */
+static const struct { const char *type; unsigned char face; } tlegend[] = {
+	{ "keyword", FACE_KEYWORD }, { "variable", 0 }, { "leanSorryLike", 0 },
+	{ "class", FACE_TYPE }, { "comment", FACE_COMMENT }, { "decorator", FACE_ATTRIBUTE },
+	{ "enum", FACE_TYPE }, { "enumMember", FACE_CONSTANT }, { "event", FACE_TYPE },
+	{ "function", FACE_FUNCTION }, { "interface", FACE_TYPE }, { "macro", FACE_CONSTANT_MACRO },
+	{ "method", FACE_FUNCTION_METHOD }, { "modifier", FACE_KEYWORD_MODIFIER }, { "namespace", FACE_MODULE },
+	{ "number", FACE_NUMBER }, { "operator", FACE_OPERATOR }, { "parameter", FACE_VARIABLE_PARAMETER },
+	{ "property", FACE_PROPERTY }, { "regexp", FACE_STRING_REGEXP }, { "string", FACE_STRING },
+	{ "struct", FACE_TYPE }, { "type", FACE_TYPE }, { "typeParameter", FACE_TYPE_DEFINITION },
+};
+#define TYPES 40
+static unsigned char tface(int t)   /* the face of token type t */
+{
+	return t < 0 || t >= 32 ? 0 : t < (int)(sizeof tlegend / sizeof *tlegend) ? tlegend[t].face : FACE_FUNCTION;
+}
+/* the token type of a word, -1 none: kw x sorry, then qa..qz za..zz
+   from type 3 on (zz past the legend) */
+static int tword(const char *s, size_t n)
+{
+	return n == 2 && !memcmp(s, "kw", 2) ? 0 : n == 1 && *s == 'x' ? 1 : n == 5 && !memcmp(s, "sorry", 5) ? 2
+	     : n == 2 && *s == 'q' ? 3 + s[1] - 'a' : n == 2 && *s == 'z' ? 29 + s[1] - 'a' : -1;
+}
+static void ftokens(long id, long v)
+{
+	Str r = { 0 };
+	const char *sdoc = old[v % 16].text;
+	size_t sn = old[v % 16].n;
+	if (old[v % 16].v != v) wrong("no version %ld kept", v);
+	if (terr) {
+		terr = 0;
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"error\":{\"code\":-32603,\"message\":\"no\"}}", id);
+		fsend(&r);
+		free(r.s);
+		return;
+	}
+	str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"data\":[", id);
+	long line = 0, col = 0, pl = 0, pc = 0;
+	for (size_t i = 0, k; i < sn && !(tpart && line); i += k) {
+		for (k = 0; i + k < sn && sdoc[i + k] >= 'a' && sdoc[i + k] <= 'z'; k++) ;
+		int t = k ? tword(sdoc + i, k) : -1;
+		if (t >= 0) {
+			str_addf(&r, "%s%ld,%ld,%zu,%d,0", r.s[r.n - 1] == '[' ? "" : ",", line - pl, line == pl ? col - pc : col, k, t);
+			pl = line; pc = col;
+		}
+		if (k) { col += (long)k; continue; }
+		k = cplen((unsigned char)sdoc[i]);
+		if (sdoc[i] == '\n') line++, col = 0;
+		else col += k == 4 ? 2 : 1;
+	}
+	str_addf(&r, "%s1000,0,1,0,0]}}", r.s[r.n - 1] == '[' ? "" : ",");
+	fsend(&r);
+	if (tpart) {
+		if (!trefresh) wrong("a refresh to a client without refreshSupport");
+		r.n = 0;
+		str_lit(&r, "{\"jsonrpc\":\"2.0\",\"id\":7777,\"method\":\"workspace/semanticTokens/refresh\"}");
+		fsend(&r);
+		sreq++;
+		tpart = 0;
+	}
+	free(r.s);
+}
 /* the goals test's project, whose name needs percent-encoding, and
    another; per test process ($GOALS_ID), so runs side by side keep apart */
-static char groot[64], guri[80], gother[64], gouri[80];
+static char groot[1100], guri[1200], gother[1100], gouri[1200];
 static void gpaths(const char *id)
 {
-	snprintf(groot, sizeof groot, "/tmp/homeros goals \xC3\xBC-%s", id);
-	snprintf(guri, sizeof guri, "file:///tmp/homeros%%20goals%%20%%C3%%BC-%s", id);
-	snprintf(gother, sizeof gother, "/tmp/homeros-goals2-%s", id);
-	snprintf(gouri, sizeof gouri, "file://%s", gother);
+	const char *t = tmp(), *sl = *t == '/' ? "" : "/";   /* file:///C:/x (RFC 8089) */
+	CHECK(strspn(t, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/:._~-") == strlen(t));   /* needs no encoding */
+	snprintf(groot, sizeof groot, "%s/homeros goals \xC3\xBC-%s", t, id);
+	snprintf(guri, sizeof guri, "file://%s%s/homeros%%20goals%%20%%C3%%BC-%s", sl, t, id);
+	snprintf(gother, sizeof gother, "%s/homeros-goals2-%s", t, id);
+	snprintf(gouri, sizeof gouri, "file://%s%s", sl, gother);
 }
 static long fsess, fsess0;            /* the RPC session (an older one is outdated); this process's first */
 static int hush;                      /* $/test/hush: say nothing of new versions */
@@ -438,16 +573,22 @@ static void fhandle(const char *m, size_t n)
 			wrong("no silent diagnostics capability: goals accomplished would show as a message");
 		/* the goals test's file is in a subdirectory of its project, whose
 		   name needs percent-encoding */
-		char ru[256] = "", cwd[256];
+		char ru[1200] = "", cwd[1100];
 		int x = json_get(m, ft, p, "rootUri");
 		if (x >= 0 && ft[x].z - ft[x].a < sizeof ru) json_str(m, ft, x, ru);
-		if (gmode && (strcmp(ru, guri) || !getcwd(cwd, sizeof cwd) || strcmp(cwd, groot)) && strcmp(ru, gouri))
+		if (gmode && (strcmp(ru, guri) || !here(cwd, sizeof cwd) || strcmp(cwd, groot)) && strcmp(ru, gouri))
 			wrong("the project is %s, not %s", ru, guri);
 		if (rnd(2)) usleep(rnd(30000));               /* messages pile up behind it */
-		int behind = 0;            /* bytes waiting (not an end: the editor may close a server it just started) */
-		if (fbehind || (ioctl(0, FIONREAD, &behind) == 0 && behind > 0)) wrong("a message sent before the initialize reply");
+		/* bytes waiting (not an end: the editor may close a server it just started) */
+		if (fbehind || waiting()) wrong("a message sent before the initialize reply");
 		Str r = { 0 };
-		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2}}}", json_int(m, ft, id));
+		str_addf(&r, "{\"jsonrpc\":\"2.0\",\"id\":%ld,\"result\":{\"capabilities\":{\"textDocumentSync\":2%s", json_int(m, ft, id),
+		         tmode ? ",\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" : "");
+		for (int i = 0; tmode && i < TYPES; i++)
+			str_addf(&r, "%s\"%s\"", i ? "," : "", i < (int)(sizeof tlegend / sizeof *tlegend) ? tlegend[i].type : "function");
+		if (tmode) str_lit(&r, "],\"tokenModifiers\":[]},\"full\":true}");
+		str_lit(&r, "}}}");
+		trefresh = json_get(m, ft, json_get(m, ft, json_get(m, ft, json_get(m, ft, p, "capabilities"), "workspace"), "semanticTokens"), "refreshSupport") >= 0;
 		fsend(&r);
 		free(r.s);
 		inited = 1;
@@ -457,6 +598,8 @@ static void fhandle(const char *m, size_t n)
 	/* the test saves to let the server die: the test then knows when */
 	if (!strcmp(meth, "textDocument/didSave") && rnd(2)) exit(0);
 	if (!strcmp(meth, "initialized") || !strcmp(meth, "$/cancelRequest") || !strcmp(meth, "textDocument/didSave")) {
+		if (meth[0] == '$') for (int k = 0; k < ntok; k++)
+			tok[k].cancelled |= tok[k].id == json_int(m, ft, json_get(m, ft, p, "id"));   /* still answered, late */
 		if (meth[0] == '$') for (int k = 0; k < npark; k++)
 			if (park[k].id == json_int(m, ft, json_get(m, ft, p, "id"))) {
 				park[k].cancelled = 1;
@@ -467,18 +610,22 @@ static void fhandle(const char *m, size_t n)
 	}
 	int td = json_get(m, ft, p, "textDocument");
 	if (!strcmp(meth, "textDocument/didOpen")) {
-		if (opened) wrong("didOpen twice");
 		int u = json_get(m, ft, td, "uri"), t = json_get(m, ft, td, "text");
+		/* the tokens test opens files of one text on one server */
+		static char was[sizeof sdoc];
+		size_t wn = sn;
+		memcpy(was, sdoc, sn);
 		json_str(m, ft, u, suri);
 		if (ft[t].z - ft[t].a >= sizeof sdoc) wrong("too long");
 		sn = json_str(m, ft, t, sdoc);
+		if (opened && !(tmode && sn == wn && !memcmp(was, sdoc, sn))) wrong("didOpen twice");
 		sver = json_int(m, ft, json_get(m, ft, td, "version"));
-		opened = 1; incr = 0;
+		opened++; incr = 0;            /* the tokens test: files of one text */
 		fkeep();
 		if (gmode && !hush) fsay();
 	} else if (!strcmp(meth, "textDocument/didClose")) {
 		if (!opened) wrong("didClose before didOpen");
-		opened = 0;
+		opened--;
 	} else if (!strcmp(meth, "textDocument/didChange")) {
 		if (!opened) wrong("didChange before didOpen");
 		long v = json_int(m, ft, json_get(m, ft, td, "version"));
@@ -575,6 +722,18 @@ static void fhandle(const char *m, size_t n)
 		if (memchr(b, '%', n)) wrong("asked about line %ld, which Lean is still elaborating", rpc.l);
 	} else if (!strcmp(meth, "$/test/die")) {
 		exit(0);
+	} else if (tmode && (!strcmp(meth, "$/test/err") || !strcmp(meth, "$/test/part"))) {
+		*(meth[7] == 'e' ? &terr : &tpart) = 1;
+	} else if (tmode && (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/slow") || !strcmp(meth, "$/test/talk"))) {
+		tdelay = meth[7] == 'h' ? 1LL << 40 : meth[7] == 's' ? 300 : 0;
+		if (!tdelay) { while (ntok) { ntok--; ftokens(tok[ntok].id, tok[ntok].v); } }
+	} else if (!strcmp(meth, "textDocument/semanticTokens/full")) {
+		if (!tmode) wrong("semantic tokens from a server without them");
+		if (ntok == 16) wrong("too many token requests");
+		json_str(m, ft, json_get(m, ft, json_get(m, ft, p, "textDocument"), "uri"), tok[ntok].u);
+		for (int k = 0; k < ntok; k++)
+			if (!strcmp(tok[k].u, tok[ntok].u) && !tok[k].cancelled) wrong("semantic tokens asked again without cancelling %ld", tok[k].id);
+		tok[ntok].id = json_int(m, ft, id); tok[ntok].v = sver; tok[ntok].at = ms(); tok[ntok++].cancelled = 0;
 	} else if (!strcmp(meth, "$/test/hush") || !strcmp(meth, "$/test/talk")) {
 		refuse = nconn = ncall = 0;
 		fsess++;                              /* and the editor's session is outdated */
@@ -605,12 +764,12 @@ static int fake(const char *seed, const char *log)
 	size_t n = 0;
 	rng ^= strtoull(seed, NULL, 10) * 0x9E3779B97F4A7C15ULL;
 	gmode = !strcmp(seed, "goals");
+	tmode = !strcmp(seed, "tokens");
 	if (gmode) gpaths(getenv("GOALS_ID") ? getenv("GOALS_ID") : "");
 	viol = fopen(log, "a");
 	if (!viol) return 2;
 	for (;;) {
-		struct pollfd pf = { 0, POLLIN, 0 };
-		if (poll(&pf, 1, (int)rnd(15)) > 0) {
+		if (ready((int)rnd(15))) {
 			ssize_t r = read(0, in + n, sizeof in - n);
 			if (r <= 0) return 0;
 			n += (size_t)r;
@@ -629,6 +788,11 @@ static int fake(const char *seed, const char *log)
 		}
 		if (!inited || !opened) continue;
 		/* refuse 4: a question in the current session never answered */
+		if (tmode && ntok && ms() - tok[0].at >= tdelay) {   /* the oldest due: answered */
+			ftokens(tok[0].id, tok[0].v);
+			memmove(tok, tok + 1, (size_t)--ntok * sizeof *tok);
+		}
+		if (tmode) continue;
 		if (gmode) { if (rpc.id && rnd(3) == 0 && !(refuse == 4 && rpc.sess == fsess)) frpc(); continue; }
 		/* idle: do something the editor must cope with */
 		unsigned a = rnd(100);
@@ -821,9 +985,7 @@ static void scenario(int seed, const char *log)
 	static LspServer fake_table[2];
 	snprintf(sseed, sizeof sseed, "%d", seed);
 	argv[0] = exe; argv[1] = "--fake"; argv[2] = sseed; argv[3] = log; argv[4] = NULL;
-	ssize_t el = readlink("/proc/self/exe", exe, sizeof exe - 1);
-	CHECK(el > 0);
-	exe[el] = 0;
+	self(exe, sizeof exe);
 	fake_table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = fake_table;
 	lsp_tap = tap;
@@ -841,8 +1003,9 @@ static void scenario(int seed, const char *log)
 	cur = 0;
 	snapshot();
 	/* A path past 512 bytes: its URI goes in every message (PR 27 review). */
-	char path[700] = "/tmp/";
-	for (int i = 0; i < 3; i++) { size_t k = strlen(path); memset(path + k, 'a', 200); path[k + 200] = 0; mkdir(path, 0700); strcat(path, "/"); }
+	char path[1700];
+	snprintf(path, sizeof path, "%s/", tmp());
+	for (int i = 0; i < LONGDIRS; i++) { size_t k = strlen(path); memset(path + k, 'a', 200); path[k + 200] = 0; mkdir(path, 0700); strcat(path, "/"); }
 	strcat(path, "homeros-test.fake");
 	LspDoc *d = lsp_open(path, t);
 	CHECK(d);
@@ -1132,22 +1295,31 @@ static void gcheck(Editor *e, Str *w, char *got)
 	if (h && t) CHECK(f[t - got] == FACE_OPERATOR);
 }
 
+/* The goals test's directories (1) or their end (0): 0 ok. */
+static int gtree(int make)
+{
+	char sub[1200], mark[1200];
+	snprintf(sub, sizeof sub, "%s/sub", groot);
+	snprintf(mark, sizeof mark, "%s/root.mark", groot);
+	if (!make) return unlink(mark) | rmdir(sub) | rmdir(groot) | rmdir(gother);
+	FILE *f = mkdir(groot, 0700) || mkdir(sub, 0700) || mkdir(gother, 0700) ? NULL : fopen(mark, "w");
+	return f ? fclose(f) : -1;
+}
+
 static void goals(const char *log)
 {
 	static char exe[4096], *const roots[] = { "root.mark", NULL };
 	static const char *argv[] = { exe, "--fake", "goals", NULL, NULL };
-	char id[16], sh[512], path[128];
+	char id[16], path[1200];
 	snprintf(id, sizeof id, "%d", (int)getpid());
 	gpaths(id);
 	CHECK(!setenv("GOALS_ID", id, 1));
-	snprintf(sh, sizeof sh, "rm -rf '%s' %s && mkdir -p '%s/sub' %s && touch '%s/root.mark'", groot, gother, groot, gother, groot);
-	CHECK(!system(sh));
+	gtree(0);             /* what a run killed left (pids come again) */
+	CHECK(!gtree(1));
 	static LspServer table[2];
 	static char got[1 << 15];
 	argv[3] = log;
-	ssize_t el = readlink("/proc/self/exe", exe, sizeof exe - 1);
-	CHECK(el > 0);
-	exe[el] = 0;
+	self(exe, sizeof exe);
 	table[0] = (LspServer){ ".fake", "fake", argv, (const char *const *)roots, 1 };
 	lsp_servers = table;
 	lsp_tap = NULL;
@@ -1177,7 +1349,9 @@ static void goals(const char *log)
 	}
 	e.win->line = 6;                          /* '#': Lean's goals not an array */
 	gcheck(&e, &w, got);
-	e.win->line = 7;                          /* '&': the expected type refused, the goals kept */
+	e.win->line = 3, e.win->col = 2;          /* an expected type shown, then refused: it goes */
+	gcheck(&e, &w, got);
+	e.win->line = 7, e.win->col = 0;          /* '&': the expected type refused, the goals kept */
 	gcheck(&e, &w, got);
 	/* G in the goals window on two goals, then none: its cursor follows
 	   the shorter text (every seed, not only the walk's) */
@@ -1303,7 +1477,9 @@ static void goals(const char *log)
 	   session (the fake knows its own); closed with a question out */
 	int nr1 = e.buf->nr;
 	/* a connect for this file answered only once the cursor is in the
-	   other: not taken as the other's session */
+	   other: not taken as the other's session (a new server first: it
+	   connects on every seed, not only when the walk left no session) */
+	lsp_restart(e.buf->lsp);
 	CHECK(!lsp_send(u, "$/test/refuse", "{\"how\":3}", 9, NULL, NULL));
 	CHECK(!core_edit(&e, core_line_start(&e, e.win->line) + e.win->col, 0, "a", 1));
 	lsp_flush(e.buf->lsp);
@@ -1371,8 +1547,162 @@ static void goals(const char *log)
 	}
 	free(w.s);
 	core_free(&e);
-	snprintf(sh, sizeof sh, "rm -rf '%s' %s", groot, gother);
-	CHECK(!system(sh));
+	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
+	CHECK(!gtree(0));   /* the editor left nothing in them */
+}
+
+/* lsp_faces: the grammar's faces (a C file's here), and the server's
+   tokens over them where it has them, its columns in UTF-16 (a 4-byte
+   character two units, a 2-byte one one), by the rule tword gives the
+   fake: kw a keyword, x a variable, sorry a type the legend has but
+   Neovim does not colour. */
+static int never(void) { return 0; }
+static void twant(Editor *e, unsigned char *f, unsigned char *syn, size_t *n)
+{
+	char b[512];
+	*n = text_read(e->buf->text, 0, b, sizeof b);
+	size_t r1, r2;
+	while (syntax_update(e->buf->syn, e->buf->text, never, &r1, &r2) == 2) ;
+	syntax_faces(e->buf->syn, 0, *n, syn);
+	memcpy(f, syn, *n);
+	for (size_t i = 0, k; i < *n; i += k ? k : 1) {
+		for (k = 0; i + k < *n && b[i + k] >= 'a' && b[i + k] <= 'z'; k++) ;
+		int t = k ? tword(b + i, k) : -1;
+		if (tface(t)) memset(f + i, tface(t), k);
+	}
+}
+
+/* Waits until lsp_faces shows twant's faces (1), or 2 s pass (0); then
+   every part of them is what lsp_faces gives for that part. */
+static int tsettle(Editor *e)
+{
+	unsigned char want[512], syn[512], got[512];
+	size_t n;
+	for (long long t0 = ms(); ms() - t0 < 2000; loop_once(10)) {
+		twant(e, want, syn, &n);
+		lsp_faces(e->buf, 0, n, got);
+		if (memcmp(got, want, n)) continue;
+		for (size_t a = 1; a < n; a++) {          /* asked from inside a token too, as a drawn line's 256 bytes */
+			lsp_faces(e->buf, a, n, got);
+			CHECK(!memcmp(got, want + a, n - a));
+		}
+		return 1;
+	}
+	return 0;
+}
+
+static void semtok(const char *log)
+{
+	static char exe[4096];
+	static const char *argv[] = { exe, "--fake", "tokens", NULL, NULL }, *argv2[5];
+	static char *const roots[] = { NULL };
+	static LspServer table[3];
+	argv[3] = log;
+	self(exe, sizeof exe);
+	table[0] = (LspServer){ ".c", "c", argv, (const char *const *)roots, 0 };
+	memcpy(argv2, argv, sizeof argv);         /* a server of its own */
+	table[1] = (LspServer){ ".tok", "tok", argv2, (const char *const *)roots, 0 };   /* no grammar */
+	lsp_servers = table;
+	char path[1200];
+	snprintf(path, sizeof path, "%s/homeros-tokens-%d.c", tmp(), (int)getpid());
+	Editor e;
+	CHECK(!core_open(&e, path) && e.buf->lsp && e.buf->syn && e.buf->faces == lsp_faces);
+	Grid g = { 0 };
+	CHECK(!grid_resize(&g, 10, 60));
+	const char *init = "int kw;\n// \xCE\xBB\xF0\x9D\x93\x9D \xC3\xA9 x kw sorry\n\nint xkw, kw;\n"
+	                   "// qa qb qc qd qe qf qg qh qi qj qk ql qm qn qo qp qq qr qs qt qu qv qw qx qy qz\n"
+	                   "// za zb zc zd ze zf zg zh zi zj zk zl zm zn zo zp zq zr zs zt zu zv zw zx zy zz\n";
+	CHECK(!core_edit(&e, 0, 0, init, strlen(init)));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	/* drawn: a keyword token over the grammar's comment, a variable token
+	   not (catppuccin/nvim), the grammar's type */
+	core_update(&e);
+	core_draw(&e, NULL, &g);
+	const Cell *c = g.c;
+	while (c->ch[0] != 'i') c++;              /* the first row the window draws */
+	unsigned char want[512], syn[512], got[512];
+	size_t n;
+	twant(&e, want, syn, &n);
+	CHECK(syn[0] != FACE_NONE && syn[17] == FACE_COMMENT);     /* "int", and "x" in the comment */
+	CHECK(c[0].face == syn[0] && c[4].face == FACE_KEYWORD && c[g.cols].face == FACE_COMMENT && c[g.cols + 8].face == FACE_COMMENT && c[g.cols + 10].face == FACE_KEYWORD);
+	const char *u = lsp_uri(e.buf->lsp);
+	/* hushed: the tokens shown follow the edits (a line gone above, a
+	   2-byte character and a 4-byte one before them on their line) */
+	CHECK(!lsp_send(u, "$/test/hush", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 8, "", 0));
+	lsp_flush(e.buf->lsp);
+	CHECK(!core_edit(&e, 3, 0, "\xC3\xA9\xF0\x9D\x93\x9D", 6));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	/* the answers come newest first: the older ones, for texts left since,
+	   are not shown */
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
+	CHECK(tsettle(&e));
+	/* an answer for a text edited since it was asked is not shown: a new
+	   kw asked about, then a line put above it before the answer */
+	CHECK(!lsp_send(u, "$/test/slow", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 0, "kw ", 3));
+	lsp_flush(e.buf->lsp);
+	CHECK(!core_edit(&e, 0, 0, "\n", 1));
+	for (long long t0 = ms(); ms() - t0 < 600; ) loop_once(10);
+	twant(&e, want, syn, &n);
+	want[1] = syn[1]; want[2] = syn[2];       /* not known yet */
+	lsp_faces(e.buf, 0, n, got);
+	CHECK(!memcmp(got, want, n));
+	lsp_flush(e.buf->lsp);
+	core_changed = 0;
+	CHECK(tsettle(&e) && core_changed);       /* the answer redraws */
+	/* a kw no longer one: the new answer replaces what was shown */
+	char b[512];
+	size_t bn = text_read(e.buf->text, 0, b, sizeof b), kw = (size_t)((char *)memmem(b, bn, " kw", 3) - b) + 2;
+	CHECK(!core_edit(&e, kw, 1, "q", 1));
+	lsp_flush(e.buf->lsp);
+	CHECK(tsettle(&e));
+	/* an error answer: the tokens shown stay, moved by the edit (Neovim) */
+	CHECK(!lsp_send(u, "$/test/talk", "{}", 2, NULL, NULL));
+	CHECK(!lsp_send(u, "$/test/err", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 0, " ", 1));
+	lsp_flush(e.buf->lsp);
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);
+	twant(&e, want, syn, &n);
+	lsp_faces(e.buf, 0, n, got);
+	CHECK(!memcmp(got, want, n));
+	/* Lean's first answer covers what it has elaborated, then it asks for
+	   a refresh: the rest comes */
+	CHECK(!lsp_send(u, "$/test/part", "{}", 2, NULL, NULL));
+	CHECK(!core_edit(&e, 0, 1, "", 0));
+	lsp_flush(e.buf->lsp);
+	for (long long t0 = ms(); ms() - t0 < 300; ) loop_once(10);   /* the first answer in */
+	CHECK(tsettle(&e));
+	/* a server for files without a grammar, given two before it is ready
+	   and one after: each is asked, and drawn in its tokens' faces */
+	char p[3][1200];
+	for (int i = 0; i < 3; i++) {
+		snprintf(p[i], sizeof p[i], "%s/homeros-tokens-%d-%d.tok", tmp(), (int)getpid(), i);
+		FILE *f = fopen(p[i], "w");
+		CHECK(f && fputs("kw x\nqa\n", f) >= 0 && !fclose(f));
+	}
+	CHECK(!core_edit_file(&e, p[0], 1) && !e.buf->syn && e.buf->faces == lsp_faces);
+	int nr = e.buf->nr;
+	CHECK(!core_edit_file(&e, p[1], 0));
+	CHECK(tsettle(&e));
+	CHECK(!core_buf_goto(&e, nr) && tsettle(&e));
+	CHECK(!core_edit_file(&e, p[2], 0) && tsettle(&e));
+	core_update(&e);
+	core_draw(&e, NULL, &g);
+	for (c = g.c; c->ch[0] != 'k'; c++) ;
+	CHECK(c[0].face == FACE_KEYWORD && c[3].face == FACE_NONE && c[g.cols].face == FACE_TYPE);
+	/* a new server: nothing shown from the old one */
+	lsp_restart(e.buf->lsp);
+	twant(&e, want, syn, &n);
+	lsp_faces(e.buf, 0, n, got);
+	CHECK(!memcmp(got, syn, n));
+	CHECK(tsettle(&e));
+	grid_free(&g);
+	core_free(&e);
+	for (int i = 0; i < 3; i++) remove(p[i]);
 	for (long long t1 = ms(); ms() - t1 < 300; ) loop_once(20);
 }
 
@@ -1436,12 +1766,15 @@ static void units(void)
 
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+	CHECK(_setmode(0, _O_BINARY) >= 0 && _setmode(1, _O_BINARY) >= 0);   /* the fake's frames as sent */
+#endif
 	if (argc == 4 && !strcmp(argv[1], "--fake")) return fake(argv[2], argv[3]);
 	units();
-	char log[] = "/tmp/homeros-lsp-XXXXXX";
-	int fd = mkstemp(log);
-	CHECK(fd >= 0);
-	close(fd);
+	char log[1100];
+	snprintf(log, sizeof log, "%s/homeros-lsp-%d", tmp(), (int)getpid());
+	FILE *lf = fopen(log, "w");
+	CHECK(lf && !fclose(lf));
 	int n = getenv("LSP_N") ? atoi(getenv("LSP_N")) : 12;
 	unsigned long long seed = getenv("SEED") ? strtoull(getenv("SEED"), NULL, 10) : (unsigned long long)time(NULL);
 	printf("test_lsp: %d scenarios, SEED=%llu\n", n, seed);
@@ -1454,6 +1787,7 @@ int main(int argc, char **argv)
 		if (f) fclose(f);
 	}
 	goals(log);
+	semtok(log);
 	FILE *f = fopen(log, "r");
 	char line[512];
 	if (f && fgets(line, sizeof line, f)) { fputs(line, stderr); CHECK(!"the fake server saw a protocol violation"); }

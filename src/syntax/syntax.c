@@ -13,10 +13,12 @@
 #include <string.h>
 #include <tree_sitter/api.h>
 #include "grid.h"
+#include "loop.h"
 #include "syntax.h"
 #include "lmatch.h"
 #include "org.h"
 #include "tsql.h"
+#include "lean.h"
 
 /* Neovim's standard capture names (:h treesitter-highlight-groups), in
    grid.h's order: name i is face i + 1.  A capture takes the longest of these
@@ -59,6 +61,69 @@ static unsigned char face_of(const char *cap, uint32_t n)
 	return (unsigned char)(best + 1);   /* FACE_NONE when none */
 }
 
+/* ---- Zig: std.zig's own parser, one per release (zig.zig, zig.nix) ---- */
+
+typedef struct ZigH ZigH;
+#define ZIG_REL(v) \
+	ZigH *zig##v##_parse(const char *src, size_t n, unsigned char *face); \
+	void zig##v##_free(ZigH *h); \
+	size_t zig##v##_errors(ZigH *h); \
+	const uint32_t *zig##v##_folds(ZigH *h, size_t *n); \
+	const char *zig##v##_fmt(ZigH *h, size_t *n); \
+	const char *zig##v##_name(unsigned char c);
+ZIG_REL(15) ZIG_REL(16) ZIG_REL(17)
+typedef struct ZigRel {
+	int minor;
+	ZigH *(*parse)(const char *, size_t, unsigned char *);
+	void (*free)(ZigH *);
+	size_t (*errors)(ZigH *);
+	const uint32_t *(*folds)(ZigH *, size_t *);
+	const char *(*fmt)(ZigH *, size_t *);
+	const char *(*name)(unsigned char);
+} ZigRel;
+#define ZIG_ROW(v) { v, zig##v##_parse, zig##v##_free, zig##v##_errors, zig##v##_folds, zig##v##_fmt, zig##v##_name }
+static const ZigRel zig_rel[] = { ZIG_ROW(15), ZIG_ROW(16), ZIG_ROW(17) };
+enum { NZIG = sizeof zig_rel / sizeof *zig_rel };
+static unsigned char zig_face[256];   /* zig.zig's capture to FACE_* */
+
+static void on_zig(void *ctx, int stream, const char *b, size_t n)
+{
+	char *v = ctx;
+	size_t l = strlen(v);
+	if (stream == 1 && b) memcpy(v + l, b, n < 31 - l ? n : 31 - l);
+}
+
+/* The release of the zig on PATH, which builds the project, once per run
+   ("0.16.0" is 16): Zig's syntax changes between releases, and only a
+   release's own parser reads its std without errors (measured,
+   research/zig.md).  A release without its parser here takes the nearest
+   (0.14's tree API differs from 0.15's on; no zig: the newest).  zig fmt
+   only with the release's own: 0.17's renders 0.16's @intFromEnum as
+   @backingInt, which 0.16 rejects (measured, reviews/pr-136.md B2). */
+static int zig_own;
+static const ZigRel *zig_release(void)
+{
+	static const ZigRel *r;
+	if (r) return r;
+	char v[32] = "";
+	char *argv[] = { "zig", "version", NULL };
+	int id = proc_spawn(argv, NULL, on_zig, v);
+	if (id >= 0) proc_wait(id, 1000);
+	int m = !strncmp(v, "0.", 2) ? atoi(v + 2) : zig_rel[NZIG - 1].minor;
+	r = &zig_rel[0];
+	for (int i = 0; i < NZIG; i++)
+		if (zig_rel[i].minor <= m) r = &zig_rel[i];
+	zig_own = !strncmp(v, "0.", 2) && r->minor == m;
+	for (int c = 1; c < 256 && *r->name((unsigned char)c); c++) {
+		char cap[64];   /* "variable_member" is variable.member */
+		uint32_t l = 0;
+		for (const char *p = r->name((unsigned char)c); *p && l < sizeof cap; p++) cap[l++] = *p == '_' ? '.' : *p;
+		zig_face[c] = face_of(cap, l);
+	}
+	return r;
+}
+
+
 /* Grammars linked in, by Neovim's name for each */
 const TSLanguage *tree_sitter_c(void);
 const TSLanguage *tree_sitter_lua(void);
@@ -91,10 +156,10 @@ enum { NLANGS = sizeof langs / sizeof *langs };
    has no 'filetype' here; Neovim also
    strips backup endings such as ~ and .bak, which these do not; it knows no
    .dl, which is souffle as the Soufflé plugins for Vim name it), and what
-   colours it: a langs[] index, T-SQL's, JSON's or Soufflé's word lists
+   colours it: a langs[] index, T-SQL's, JSON's, Soufflé's or Lean's lexer
    (tsql.c, in tsql_new's order), Org's (package 16, org.h), or nothing yet
    (Davy's other languages, FEATURES.md) */
-enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_ORG = -5, BY_V = -6 };
+enum { BY_NONE = -1, BY_SQL = -2, BY_JSON = -3, BY_DL = -4, BY_LEAN = -5, BY_ORG = -6, BY_V = -7, BY_ZIG = -8 };
 static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".c", "c", 0 }, { ".h", "cpp", 0 }, { ".lua", "lua", 1 }, { ".md", "markdown", 2 },
 	{ ".sql", "sql", BY_SQL }, { ".json", "json", BY_JSON }, { "CMakeLists.txt", "cmake", 7 },
@@ -102,8 +167,9 @@ static const struct { const char *ext, *ft; int lang; } fts[] = {
 	{ ".glsl", "glsl", 5 }, { ".vert", "glsl", 5 }, { ".frag", "glsl", 5 },
 	{ ".comp", "glsl", 5 }, { ".geom", "glsl", 5 }, { ".tesc", "glsl", 5 },
 	{ ".tese", "glsl", 5 }, { ".sv", "systemverilog", 8 }, { ".svh", "systemverilog", 8 },
-	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_NONE }, { ".cs", "cs", BY_NONE },
+	{ ".cmake", "cmake", 7 }, { ".lean", "lean", BY_LEAN }, { ".cs", "cs", BY_NONE },
 	{ ".org", "org", BY_ORG }, { ".dl", "souffle", BY_DL }, { ".v", NULL, BY_V },
+	{ ".zig", "zig", BY_ZIG },
 };
 
 /* fts[]'s entry for path's base name (after its last / or \, as Neovim),
@@ -187,6 +253,11 @@ typedef struct LTree {
 struct Syntax {
 	Tsql *sql;                 /* T-SQL by word lists, or JSON, instead (tsql.c) */
 	OrgFx *org;                /* or Org's */
+	const ZigRel *zig;         /* or Zig's own parser of this release */
+	ZigH *zh, *zfh;            /* its last parse (folds, zig fmt), and zig fmt's own */
+	char *zsrc;                /* the text zh parsed, 0 after it */
+	unsigned char *zf;         /* zh's faces, one per byte of zn, kept with the text */
+	size_t zn, zcap;
 	LTree *root;
 	TSParser *p;
 	TSQueryCursor *qc;
@@ -436,15 +507,52 @@ static void free_ltree(Syntax *s, LTree *L)
 
 static int verilog(const Text *t);
 
+/* Room for n bytes of text and faces (and the 0 after the text); 0 ok, -1
+   out of memory.  Faces are kept, as edits move them. */
+static int zig_grow(Syntax *s, size_t n)
+{
+	if (n < s->zcap) return 0;
+	size_t c = 2 * n + 1;
+	char *b = realloc(s->zsrc, c);
+	if (b) s->zsrc = b;
+	unsigned char *f = b ? realloc(s->zf, c) : NULL;
+	if (!f) return -1;
+	s->zf = f, s->zcap = c;
+	return 0;
+}
+
+/* Zig's parse of the whole text (a full parse per change, Davy's choice of
+   2026-11-23) with its faces, or with face 0 the tree alone; NULL out of
+   memory.  An edit and the update after it, over Zig 0.17's std (563
+   files, 45,040 one-byte inserts, 5 runs, reviews/pr-136-repro/bench.c):
+   median 0.11 ms, p99 3.8 ms, 8.4 ms in the largest file (829 KB) */
+static ZigH *zig_parse(Syntax *s, const Text *t, int face)
+{
+	size_t n = text_len(t);
+	if (zig_grow(s, n)) return NULL;
+	text_read(t, 0, s->zsrc, n);
+	s->zsrc[n] = 0;
+	ZigH *h = s->zig->parse(s->zsrc, n, face ? s->zf : NULL);
+	if (h && face)
+		for (size_t i = 0; i < n; i++) s->zf[i] = zig_face[s->zf[i]];
+	return h;
+}
+
 Syntax *syntax_open(const char *path, const Text *t)
 {
 	int i = ft_of(path), li = i < 0 ? BY_NONE : fts[i].lang;
 	if (li == BY_V) li = verilog(t) ? 8 : BY_NONE;
 	if (li == BY_NONE) return NULL;
+	if (li == BY_ZIG) {
+		Syntax *s = calloc(1, sizeof *s);
+		if (s) s->zig = zig_release(), s->t = t, s->dirty = 1;
+		return s;
+	}
 	if (li < BY_NONE) {
 		Syntax *s = calloc(1, sizeof *s);
 		if (s && (li == BY_ORG ? !(s->org = orgfx_new(t)) : !(s->sql = tsql_new(t, BY_SQL - li))))
 			free(s), s = NULL;
+		else if (li == BY_LEAN) tsql_lines(s->sql, lean_line);
 		return s;
 	}
 	Syntax *s = calloc(1, sizeof *s);
@@ -470,6 +578,10 @@ void syntax_free(Syntax *s)
 	if (!s) return;
 	tsql_free(s->sql);
 	orgfx_free(s->org);
+	if (s->zh) s->zig->free(s->zh);
+	if (s->zfh) s->zig->free(s->zfh);
+	free(s->zsrc);
+	free(s->zf);
 	if (started(s)) free_ltree(s, s->root);
 	if (s->qc) ts_query_cursor_delete(s->qc);
 	if (s->p) ts_parser_delete(s->p);
@@ -545,7 +657,15 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	   resume it; parse() drops it after asking stop, because freeing it
 	   (ts_parser_reset) can take a millisecond the frame may not have */
 	if (s->susp) s->susp = &edited;
-	if (!started(s)) return;
+	if (s->zig) {
+		/* the faces follow the text until the next parse */
+		if (pos + ndel > s->zn || zig_grow(s, s->zn - ndel + nins)) s->zn = 0;
+		else {
+			memmove(s->zf + pos + nins, s->zf + pos + ndel, s->zn - pos - ndel);
+			memset(s->zf + pos, 0, nins);
+			s->zn += nins - ndel;
+		}
+	} else if (!started(s)) return;
 	TSInputEdit e;
 	e.start_byte = (uint32_t)pos;
 	e.old_end_byte = (uint32_t)(pos + ndel);
@@ -556,7 +676,7 @@ void syntax_edit(Syntax *s, const Text *t, size_t pos, size_t ndel, const char *
 	for (size_t i = 0; i < nins; i++)
 		if (ins[i] == '\n') e.new_end_point.row++, e.new_end_point.column = 0;
 		else e.new_end_point.column++;
-	edit_ltree(s->root, &e);
+	if (!s->zig) edit_ltree(s->root, &e);
 	fold_edit(s, e.start_point.row, e.start_point.column, e.old_end_point.row - e.start_point.row,
 	          e.old_end_point.row > e.start_point.row ? e.old_end_point.column : ndel,
 	          e.new_end_point.row - e.start_point.row,
@@ -1023,6 +1143,19 @@ int syntax_update(Syntax *s, const Text *t, int (*stop)(void), size_t *r1, size_
 		if (r == 1) *r2 = text_lines(t);
 		return r;
 	}
+	if (s->zig) {
+		if (!s->dirty) return 0;
+		/* one parse cannot be cut: a waiting key goes first */
+		if (stop && stop()) return 2;
+		ZigH *h = zig_parse(s, t, 1);
+		if (!h) return 0;
+		if (s->zh) s->zig->free(s->zh);
+		s->zh = h, s->zn = text_len(t), s->t = t, s->dirty = 0;
+		/* a whole parse: every row's level again */
+		s->ea = 0, s->ez = text_lines(t);
+		fold_update(s, r1, r2);
+		return 1;
+	}
 	/* the trees the last parse replaced, freed in steps (release.c) */
 	while (syntax_release(NULL, stop ? RELEASE_STEP : UINT32_MAX))
 		if (stop()) return 2;
@@ -1154,6 +1287,10 @@ void syntax_faces(Syntax *s, size_t a, size_t z, unsigned char *face)
 		orgfx_faces(s->org, a, z, face);
 		return;
 	}
+	if (s->zig) {
+		if (a < s->zn) memcpy(face, s->zf + a, (z < s->zn ? z : s->zn) - a);
+		return;
+	}
 	if (a < s->va) s->va = (uint32_t)a;
 	if (z > s->vz) s->vz = (uint32_t)z;
 	/* bytes whose injections are not known yet: the next update finds them */
@@ -1231,7 +1368,7 @@ static int fold_rows(Syntax *s, size_t a, size_t z, int add)
 static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, size_t nrow, size_t nc)
 {
 	size_t eo = sr + orow + 1, en = sr + nrow + 1;
-	if (!s->nlv || (nrow == orow && s->root->lang != 2)) return;
+	if (!s->nlv || (nrow == orow && (s->zig || s->root->lang != 2))) return;
 	int bad = 0;
 	if (nrow < orow) bad = sc == 0 && nrow == 0 && nc == 0 ? fold_rows(s, sr, sr + eo - en, 0) : fold_rows(s, en, eo, 0);
 	else if (nrow > orow) bad = sc == 0 && orow == 0 && oc == 0 ? fold_rows(s, sr, sr + en - eo, 1) : fold_rows(s, eo, en, 1);
@@ -1253,6 +1390,16 @@ static void fold_edit(Syntax *s, size_t sr, size_t sc, size_t orow, size_t oc, s
    for_each_tree's order, matched over rows [srow - 1, erow), each a fold
    from its first row to its last (one fewer when it ends at column 0) if
    it spans more than 'foldminlines' (1) and is not the one just counted */
+/* One @fold capture from row sr to er, counted in [lo, z) where it spans
+   more than 'foldminlines' (1) and is not the one just counted */
+static void fold_count(int64_t sr, int64_t er, size_t lo, size_t z, int *in, int *out, int64_t *prev)
+{
+	if (er - sr + 1 <= 1 || (sr == prev[0] && er == prev[1])) return;
+	if (sr >= (int64_t)lo && sr < (int64_t)z) in[sr - (int64_t)lo]++;
+	if (er >= (int64_t)lo && er < (int64_t)z) out[er - (int64_t)lo]++;
+	prev[0] = sr, prev[1] = er;
+}
+
 static void fold_tree(Syntax *s, LTree *L, size_t lo, size_t z, int *in, int *out, int64_t *prev)
 {
 	Q *Q = &queries[L->lang].fold;
@@ -1267,17 +1414,21 @@ static void fold_tree(Syntax *s, LTree *L, size_t lo, size_t z, int *in, int *ou
 			for (uint16_t k = 0; k < m.capture_count; k++)
 				if (m.captures[k].index == Q->content) b = &m.captures[k].node, a = a ? a : b;
 			if (!a) continue;
-			int64_t sr = ts_node_start_point(*a).row;
 			TSPoint e = ts_node_end_point(*b);
-			int64_t er = (int64_t)e.row - (e.column == 0);
-			if (er - sr + 1 > 1 && (sr != prev[0] || er != prev[1])) {
-				if (sr >= (int64_t)lo && sr < (int64_t)z) in[sr - (int64_t)lo]++;
-				if (er >= (int64_t)lo && er < (int64_t)z) out[er - (int64_t)lo]++;
-				prev[0] = sr, prev[1] = er;
-			}
+			fold_count(ts_node_start_point(*a).row, (int64_t)e.row - (e.column == 0), lo, z, in, out, prev);
 		}
 	}
 	for (uint32_t k = 0; k < L->nkid; k++) fold_tree(s, L->kid[k], lo, z, in, out, prev);
+}
+
+/* zig.zig's folds.scm spans, as fold_tree's captures: no Zig token ends
+   with its newline, so none ends at column 0 */
+static void fold_zig(Syntax *s, size_t lo, size_t z, int *in, int *out, int64_t *prev)
+{
+	size_t n;
+	const uint32_t *f = s->zig->folds(s->zh, &n);
+	for (size_t i = 0; i < n; i++)
+		fold_count((int64_t)text_line_of(s->t, f[2 * i]), (int64_t)text_line_of(s->t, f[2 * i + 1]), lo, z, in, out, prev);
 }
 
 /* Markdown's ftplugin (g:markdown_folding): MarkdownFold() starts a fold of
@@ -1309,7 +1460,7 @@ static void fold_levels(Syntax *s, size_t a, size_t z, size_t *r1, size_t *r2)
 	if (z > s->nlv) z = s->nlv;
 	if (a >= z) return;
 	Src src = { s->t, 0, 0, { 0 } };
-	if (s->root->lang == 2) {
+	if (!s->zig && s->root->lang == 2) {
 		size_t r = a;
 		if (r < *r1) *r1 = r;
 		for (int v; r < s->nlv; r++) {
@@ -1327,8 +1478,11 @@ static void fold_levels(Syntax *s, size_t a, size_t z, size_t *r1, size_t *r2)
 		return;
 	}
 	int64_t prev[2] = { -1, -1 };
-	fold_tree(s, s->root, lo, z, in, out, prev);
-	ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });
+	if (s->zig) fold_zig(s, lo, z, in, out, prev);
+	else {
+		fold_tree(s, s->root, lo, z, in, out, prev);
+		ts_query_cursor_set_point_range(s->qc, (TSPoint){ 0, 0 }, (TSPoint){ UINT32_MAX, UINT32_MAX });
+	}
 	int lv = a ? s->lv0[a - 1] : 0, left = a ? out[0] : 0;
 	for (size_t r = a; r < z; r++) {
 		int e = in[r - lo], o = out[r - lo], v = lv - left + e;
@@ -1380,6 +1534,21 @@ int syntax_foldexpr(Syntax *s, size_t line, int *start)
 	if (line >= s->nlv) return 0;
 	*start = s->lv[line] % 2 != 0;
 	return (s->lv[line] - *start) / 2;   /* a level below 0 starts too: ">-1" is -1 */
+}
+
+int syntax_zig_fmt(Syntax *s, const char **res, size_t *n)
+{
+	if (!s || !s->zig) return -2;
+	if (!zig_own) return -3;
+	/* the colours' parse while it is current, else one of its own */
+	ZigH *h = s->zh;
+	if (s->dirty || !h) {
+		if (s->zfh) s->zig->free(s->zfh);
+		h = s->zfh = zig_parse(s, s->t, 0);
+		if (!h) return -2;
+	}
+	*res = s->zig->fmt(h, n);
+	return *res ? 0 : s->zig->errors(h) ? -1 : -2;
 }
 
 /* render-markdown 8.14's facts for line l, from the Markdown block tree as

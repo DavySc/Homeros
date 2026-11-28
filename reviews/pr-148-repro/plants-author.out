@@ -1,0 +1,14 @@
+caught        lsp: tokens: an answer for a text edited since shown   (make test TESTS=lsp): tests/test_lsp.c:1587: CHECK(!memcmp(got, want, n)) failed
+caught        lsp: tokens: not moved by edits until the answer comes   (make test TESTS=lsp): tests/test_lsp.c:1571: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: UTF-16 columns read as bytes   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: a new request without cancelling the last   (make test TESTS=lsp): tests/test_lsp.c:1576: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: the grammar's faces dropped   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: a new line's start taken from the last token's   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: asked from inside a token, it is missed   (make test TESTS=lsp): tests/test_lsp.c:1526: CHECK(!memcmp(got, want + a, n - a)) failed
+caught        lsp: tokens: a type Neovim does not colour coloured   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: not asked for once the server is ready   (make test TESTS=lsp): tests/test_lsp.c:1552: CHECK(tsettle(&e)) failed
+caught        lsp: tokens: not asked again after an edit   (make test TESTS=lsp): tests/test_lsp.c:1589: CHECK(tsettle(&e)) failed
+caught        lsp: goals: a refused question keeps the expected type shown for another line   (make test TESTS=lsp): tests/test_lsp.c:1239: CHECK(ok) failed
+caught        core: Buf.faces not drawn (the goals window's colours, Lean's tokens)   (make test TESTS=lsp): tests/test_lsp.c:1562: CHECK(c[0].face == syn[0] && c[4].face == FACE_KEYWORD && c[g.cols].face == FACE_COMMENT && c[g.cols + 8].face == FACE_VARIABLE) failed
+caught        core: a buffer with a server not given lsp_faces   (make test TESTS=lsp): tests/test_lsp.c:1546: CHECK(!core_open(&e, path) && e.buf->lsp && e.buf->syn && e.buf->faces == lsp_faces) failed
+plants-done

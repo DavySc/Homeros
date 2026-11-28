@@ -217,6 +217,8 @@ core: a line's underlines walk every diagnostic before it (test_core_diag frame 
 core: a second window on the buffer puts the message on its own cursor line (test_core_diag two windows)~test TESTS=core_diag~~src/core/draw.c~l == (w->buf == typing->buf ? typing->line : w->line)~l == w->line
 core: buf_load watches the shared fd again for every file (test_core_contract)~test TESTS=core_contract~~src/core/core.c~			loop_unwatch(b->watch);¶~
 core: the message's "\r" is drawn, not dropped (test_core_diag)~test TESTS=core_diag~~src/core/draw.c~size_t n = strcspn(m, "\r\n\t");~size_t n = strcspn(m, "\n\t");
+core: Buf.faces not drawn (the goals window's colours, Lean's tokens)~test TESTS=lsp~~src/core/draw.c~			if (w->buf->faces) w->buf->faces(w->buf, ls + f0, fz, fc);¶			else syntax_faces(syn, ls + f0, fz, fc);~			syntax_faces(syn, ls + f0, fz, fc);
+core: a buffer with a server not given lsp_faces~test TESTS=lsp~~src/core/core.c~	b->faces = b->lsp ? lsp_faces : NULL;~	b->faces = NULL;
 core: a new tab page ignores the command line's height (recorded traces)~test TESTS=core_screens~~src/core/win.c~	layout_init(e, w, ch);~	layout_init(e, w, 1 + 0 * ch);
 core: closing a tab page enters the first one, not alt_tabpage() (test_keys_map)~test TESTS=keys_map~~src/core/win.c~	if (e->tab->next) return e->tab->next;~	if (e->tab->next) return e->tab == e->tabs ? e->tab->next : e->tabs;
 core: a new tab page skips the status line's win_new_height() (test_keys_map)~test TESTS=keys_map~~src/core/win.c~	w->h += STATUS;¶	win_new_height(e, w, w->h - STATUS);~
@@ -226,6 +228,7 @@ core: :bd keeps its folder's watch, so Windows cannot rename its parent~win WIN=
 core: a freed buffer keeps its folder's watch~win WIN=git~~src/core/core.c~	buf_unwatch(b);¶	umarks_drop(b);~	umarks_drop(b);
 core: a closed watch stays in the loop~win WIN=git~~src/core/core.c~if (b->watch >= 0 && file_unwatch(b->watch)) loop_unwatch(b->watch);~if (b->watch >= 0) file_unwatch(b->watch);
 specs: Frames with one dirty flag~specs~find design/specs -name '*.cfg' ! -name Frames_ok.cfg -delete~design/specs/Frames_ok.cfg~ Variant = "ok"~ Variant = "shared"
+core: Buf.faces drawn only where there is a grammar (Lean files, the goals window)~test TESTS=lsp~~src/core/draw.c~	int faced = syn || w->buf->faces;~	int faced = syn != NULL;
 core: core_buf_append leaves a window on the last line behind (test_core_contract)~test TESTS=core_contract~~src/core/core.c~if (w->buf == b && w->line >= last) w->line~if (w->buf == b && w->line > last) w->line
 core: core_buf_shown counts windows from 0 (test_core_contract)~test TESTS=core_contract~~src/core/core.c~	long k = 1;~	long k = 0;
 core: core_visual's v ends inside the last character (test_core_contract)~test TESTS=core_contract~~src/core/core.c~c2 + uni_glen(l, len, c2) :~c2 + 1 + 0 * uni_glen(l, len, c2) :
@@ -239,3 +242,5 @@ core: a refill clamps the current frame's windows only~test TESTS=keys_map~~src/
 core: :tabnew {file} after :bd keeps column 0 on a line of blanks~test TESTS=core_screens~~src/core/core.c~how == ENTER_E || (how != ENTER_B && line1_blank(e))~how == ENTER_E || (how == ENTER_ALT && line1_blank(e))
 core: a cursor inside a character takes the next one's screen column~test TESTS=core_screens~~src/core/core.c~		if (i + k > col) break;~		if (i >= col) break;
 core: tab ids reused, so a third frame takes a closed one's window id (test_frames_main)~test TESTS=frames_main~~src/core/win.c~	t->id = tab_ids++;~	t->id = tab_ids;
+core: a buffer without a path ignores its Buf.status (test_core_status)~test TESTS=core_status~~src/core/draw.c~	const char *name = b->status ? b->status : "[No Name]";~	const char *name = "[No Name]";
+core: f given as a frame letter, so SPC 5 f never reaches that frame (test_keys_map)~test TESTS=keys_map~~src/core/win.c~"abcdeghijklpqrstuvwxyz"~"abcdefghijklpqrstuvwxyz"

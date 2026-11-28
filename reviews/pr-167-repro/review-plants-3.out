@@ -1,0 +1,12 @@
+caught        snip: DELETE offers no words   (CHECK(strstr(shown(e), " fact ") && strstr(shown(e), " from ")) failed)
+caught        snip: SELECT y = x: y a bare name   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)
+caught        snip: SET a = 1, b = 2: b taken for an alias   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)
+caught        review: f() y: y a bare name   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)
+caught        review: x y: y a bare name   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)
+caught        review: functions with T-SQL's other words   (CHECK(!strcmp(shown(e), "case cast cascade")) failed)
+caught        review: reserved words with T-SQL's other words   (CHECK(!strcmp(shown(e), "case cast cascade")) failed)
+caught        review: the file's words kept over a new index   (CHECK(!strncmp(shown(e), "as abs ", 7)) failed)
+NOT CAUGHT    review: a T-SQL word after an operator no column
+NOT CAUGHT    review: a T-SQL word after a comma no column
+caught        review: a T-SQL word after WHERE, BY... no column   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)
+caught        review: SELECT y = x: any = drops the name before it   (CHECK(!strcmp(shown(e), "a b t u w x y kind name")) failed)

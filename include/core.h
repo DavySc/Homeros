@@ -54,6 +54,8 @@ typedef struct Buf {
 	Text *text;
 	Undo *undo;
 	char *path;                /* NULL for a buffer without a name */
+	const char *status;        /* shown in place of the file name for a buffer without a path; NULL:
+	                              [No Name].  Owned by whoever sets it */
 	char *full;                /* Neovim's b_ffname: path through file_full() (the path
 	                              as typed when that fails); buffers are found by it
 	                              (buflist_findname()); set and freed with path */
@@ -70,8 +72,8 @@ typedef struct Buf {
 	long lastused;             /* seconds when a window last entered it (b_last_used), for the buffers picker */
 	WinInfo *wi;
 	struct Syntax *syn;        /* syntax.h; NULL: no grammar for this file */
-	/* where syn is NULL: one FACE_* per byte of [a, z), as syntax_faces (git's
-	   diff and status buffers); NULL: none */
+	/* one FACE_* per byte of [a, z), drawn instead of syntax_faces (the
+	   goals window, lsp_faces for a buffer with a server); NULL: syntax_faces */
 	void (*faces)(const struct Buf *b, size_t a, size_t z, unsigned char *face);
 	int nonumber;              /* setlocal nonumber norelativenumber (neogit's buffers) */
 	int nomodifiable;          /* 'nomodifiable' (the quickfix buffer): the core's
@@ -126,6 +128,8 @@ typedef struct Tab {
 	struct Frame *layout;
 	int rows, cols;            /* its OS window's size in cells */
 	int id;                    /* the backend's handle for its OS window, from 0, never reused */
+	char key;                  /* SPC 5 {key} enters it: the first free letter but SPC 5's f, m, n
+	                              and o when made (0 past 22 tab pages); SPC 5 n {letter} changes it */
 	struct Tab *next;          /* tab page order (gt) */
 } Tab;
 
