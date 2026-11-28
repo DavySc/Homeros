@@ -34,8 +34,9 @@ powershell -NoProfile -Command "Get-Process devenv -ErrorAction SilentlyContinue
 cat "$work/vs.txt" 2>/dev/null | cut -c1-600 || true
 timeout 120 tail --pid=$session -f /dev/null || true
 wait $session || { echo "pg: the session Visual Studio was in did not end well"; tail -n 20 "$work/log.txt"; exit 1; }
-ours=$(awk '/^(breakpoint|stepped)$/ { getline; n = split($NF, p, "/"); print $3, p[n] }' "$work/hdbg.txt")
-theirs=$(tr -d '\r' < "$work/vs.txt" | sed -n 's/^STEP [a-z]* \(.*\) [0-9]*$/\1/p')
+# by function and address (its automation names no file for this code; the two backends have the program at one address), and what the step out returned
+ours=$(awk '/^(breakpoint|stepped)$/ { getline; print $3, $2 } /^\$ReturnValue = /{ print $3 }' "$work/hdbg.txt")
+theirs=$(tr -d '\r' < "$work/vs.txt" | awk '/^STEP /{ printf "%s 0x%x\n", $3, $NF } /^VALUE \$ReturnValue = /{ print $4 }')
 [ "$ours" = "$theirs" ] || { echo "pg: ours stops at:"; echo "$ours"; echo "Visual Studio at:"; echo "$theirs"; exit 1; }
 pg_ctl -D "$work/data" -w stop
 echo "pg ok"
