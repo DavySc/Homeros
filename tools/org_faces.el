@@ -10,7 +10,7 @@
 (setq org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CANCELLED"))
       org-highlight-links '(bracket angle plain tag date footnote)
       org-fontify-emphasized-text nil)
-(load (expand-file-name "org_footnote.el" (file-name-directory load-file-name)) nil t)
+(load (expand-file-name "org_advice.el" (file-name-directory load-file-name)) nil t)
 (defun org-faces-top (p)
   (let ((f (get-text-property p 'face)))
     (while (and (consp f) (not (keywordp (car f)))) (setq f (car f)))
