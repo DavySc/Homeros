@@ -7,8 +7,15 @@ if (-not $dte) { "VS pg: no Visual Studio"; exit 1 }
 $lines = @()
 try {
   Again { $dte.SuppressUI = $true }
+  # the breakpoint is set with the program stopped, as trace.ps1 does: one set before attaching never stopped it (the first try)
+  $p = Again { @($dte.Debugger.LocalProcesses | Where-Object { $_.ProcessID -eq $procid })[0] }
+  try { $p.Attach2('Native') } catch { $lines += "NOTE Attach2: $_"; Again { $p.Attach() } }
+  Again { $dte.Debugger.Break($true) }
+  if (-not (Stopped $dte)) { throw "no stop after attaching" }
   Again { $dte.Debugger.Breakpoints.Add('ExecutorRun') } | Out-Null
-  Again { @($dte.Debugger.LocalProcesses | Where-Object { $_.ProcessID -eq $procid })[0].Attach() }
+  $lines += "NOTE breakpoints: " + ((Again { @($dte.Debugger.Breakpoints | ForEach-Object { "$($_.FunctionName) $($_.Enabled) children=$($_.Children.Count)" }) }) -join '; ')
+  Again { $dte.Debugger.Go($false) }
+  Start-Sleep -Seconds 2   # it runs again before the stop is waited for
   if (-not (Stopped $dte 900)) { throw "no stop at the breakpoint" }
   $lines += "STEP stop $(Place $dte)"
   $lines += 'STACK ' + ((Again { @($dte.Debugger.CurrentThread.StackFrames | ForEach-Object { $_.FunctionName }) }) -join ' ')
