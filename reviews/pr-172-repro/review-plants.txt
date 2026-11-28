@@ -1,0 +1,6 @@
+review: the catalog of the first buffer kept for every buffer~test TESTS=snip_sql~~src/snip/snip.c~	if (I.catb != e->buf || !I.cat) {~	if (!I.cat) {
+review: the catalog read again at every index build~test TESTS=snip_sql~~src/snip/snip.c~	if (I.catb != e->buf || !I.cat) {~	if (1) {
+review: the index made again at every word start once the catalog is in~test TESTS=snip_sql~~src/snip/snip.c~ || (!I.cat && sql_catalog(e, e->buf, column, NULL))) scan(e, a, z);~ || sql_catalog(e, e->buf, column, NULL)) scan(e, a, z);
+review: the catalog's tables not offered~test TESTS=snip_sql~~src/snip/snip.c~	fact(table, schema, "Table");¶	fact(col, table, "Column");~	(void)schema, fact(col, table, "Column");
+review: the catalog's columns under their schema~test TESTS=snip_sql~~src/snip/snip.c~	fact(col, table, "Column");~	fact(col, schema, "Column");
+review: the catalog's spelling of a name before the file's~test TESTS=snip_sql~~src/snip/snip.c~by_fact(x, y) <= 0) ? x++ : y++;¶		if ((!l~by_fact(x, y) < 0) ? x++ : y++;¶		if ((!l
