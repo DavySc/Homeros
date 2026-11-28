@@ -25,7 +25,7 @@ static void goal(void *ctx, const char *m, size_t n)
 {
 	(void)ctx;
 	size_t r = m ? j_member(m, n, 0, "result") : NONE;
-	if (r == NONE) return;   /* an error or a dead server: no goal, as lsp_answer gave none */
+	if (r == NONE) return;   /* an error or a dead server: no goal */
 	char *g = j_str(m, n, j_member(m, n, r, "rendered"), NULL);
 	printf("goal\n%s\n\x04\n", g ? g : "");
 	fflush(stdout);

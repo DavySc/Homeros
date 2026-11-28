@@ -1,7 +1,7 @@
 /* Package 13 and its keys: the places a server names (lsp_locs), the keys
    that ask for them (C-] grr gri grt gO: what the server is asked, what is
    said, the list or the jump and C-o back) and the diagnostic jumps ("]d"
-   "[d" "]D" "[D", C-o back), against what Neovim made of the same answers
+   "[d" "]D" "[D", C-o back) and K's float, against what Neovim made of the same answers
    and diagnostics (tests/test_lsp_locs.py recorded them; it is also the
    fake server here, logging what it is asked).  usage: test_lsp_locs [FILE] */
 #include <limits.h>
@@ -81,7 +81,8 @@ static int key_case(Editor *e, const char *m)
 	char *k = str(m, json_get(m, tk, 0, "key")), *msg = str(m, json_get(m, tk, 0, "msg"));
 	size_t n0, n1;
 	free(log_read(&n0));
-	type(e, strcmp(k, "<C-]>") ? k : "\x1d", 1);
+	type(e, strncmp(k, "<C-]>", 5) ? k : "\x1d", 1);
+	if (!strncmp(k, "<C-]>", 5) && k[5]) type(e, k + 5, 0);   /* then n: the guess is the last search pattern */
 	Str want = { 0 };
 	str_add(&want, "", 0);
 	for (int i = 0, x; (x = json_at(tk, json_get(m, tk, 0, "req"), i)) >= 0; i++) { char *r = str(m, x); str_addf(&want, "%s\n", r); free(r); }
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
 	CHECK(o && !fclose(o) && (o = fopen(logf, "w")) && !fclose(o));
 	FILE *f = fopen(path, "r");
 	CHECK(f && !chdir(dir));   /* Neovim's: names in lists relative to it */
-	int nloc = 0, ndiag = 0, bad = 0, nlist = 0;
+	int nloc = 0, ndiag = 0, bad = 0, nlist = 0, nhover = 0, again = 0;
 	Str want = { 0 };
 	while (fgets(line, sizeof line, f)) {
 		size_t n = strlen(line);
@@ -241,6 +242,41 @@ int main(int argc, char **argv)
 			if (!keyed && res >= 0 && tk[res].type == 'a' && tk[it].n > 0 && json_get(line, tk, 0, "error") < 0) keyed_case(&e);
 			free(m);
 			nloc++;
+		} else if (!strcmp(kind, "hover")) {
+			/* the float's lines and place, or the message */
+			int cur = json_get(line, tk, 0, "cur"), at = json_get(line, tk, 0, "at"), ls = json_get(line, tk, 0, "lines");
+			want.n = 0;
+			str_add(&want, "", 0);
+			for (int i = 0, x; (x = json_at(tk, ls, i)) >= 0; i++) { char *t = str(line, x); str_addf(&want, "%s\n", t); free(t); }
+			if (at >= 0) for (int i = 0; i < 4; i++) str_addf(&want, " %ld", json_int(line, tk, json_at(tk, at, i)));
+			else { char *t = str(line, json_get(line, tk, 0, "msg")); str_addz(&want, t); free(t); }
+			core_goto(&e, (size_t)json_int(line, tk, json_at(tk, cur, 0)), (size_t)json_int(line, tk, json_at(tk, cur, 1)));
+			e.msg[0] = 0;
+			keys_input(&e, 'K', 0);
+			int mv = json_get(line, tk, 0, "move");   /* moved before the answer: dropped */
+			if (mv >= 0) core_goto(&e, (size_t)json_int(line, tk, json_at(tk, mv, 0)), (size_t)json_int(line, tk, json_at(tk, mv, 1)));
+			for (int t = 0; t < (mv >= 0 ? 100 : 1000) && !e.pop && !e.msg[0]; t++) loop_once(10);
+			got.n = 0;
+			str_add(&got, "", 0);
+			if (e.pop) {
+				size_t tn = text_len(e.pop->buf->text);
+				char *t = malloc(tn + 1);
+				CHECK(t);
+				text_read(e.pop->buf->text, 0, t, tn);
+				str_add(&got, t, tn);
+				free(t);
+				str_addf(&got, " %d %d %d %d", e.pop->y, e.pop->x, e.pop->w, e.pop->h);
+			} else str_addz(&got, e.msg);
+			if (strcmp(got.s, want.s) && bad++ < 5) fprintf(stderr, "case %ld (hover):\nnvim:\n%s\ncore:\n%s\n", k, want.s, got.s);
+			nhover++;
+			/* once: a second K replaces the float (the old one freed: LSan),
+			   marked so its replacement shows */
+			if (e.pop && !again++) {
+				e.pop->h = -1;
+				keys_input(&e, 'K', 0);
+				for (int t = 0; t < 1000 && e.pop && e.pop->h == -1; t++) loop_once(10);
+				CHECK(e.pop && e.pop->h > 0);
+			}
 		} else {
 			int d = json_get(line, tk, 0, "diags"), have = 0, nd = tk[d].n;
 			for (int t = 0; t < 1000 && have < nd; t++) { loop_once(10); lsp_diags(e.buf->lsp, &have); }
@@ -270,7 +306,7 @@ int main(int argc, char **argv)
 	str_free(&want);
 	str_free(&got);
 	CHECK(keyed && nlist && indented);
-	if (bad) { printf("test_lsp_locs: %d of %d cases differ from Neovim\n", bad, nloc + ndiag); return 1; }
-	printf("test_lsp_locs: %d answers and %d diagnostic jumps as Neovim's\n", nloc, ndiag);
+	if (bad) { printf("test_lsp_locs: %d of %d cases differ from Neovim\n", bad, nloc + ndiag + nhover); return 1; }
+	printf("test_lsp_locs: %d answers, %d diagnostic jumps and %d hovers as Neovim's\n", nloc, ndiag, nhover);
 	return 0;
 }

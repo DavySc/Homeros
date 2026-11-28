@@ -1584,7 +1584,7 @@ static int cmd_flags(int c)
 
 static int known(int c)
 {
-	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3 || c == 9 || c == 15
+	return has(" \"#$%&'()*+,-./0:;<>?@ABCDEFGHIJKLMNOPQRSTUWXYV[]^_`abcdefghijklmnopqrstuvwxyz{|}~", c) || c == 1 || c == 3 || c == 9 || c == 15
 	       || c == 8 || c == 10 || c == 13 || c == 14 || c == 16 || c == 22 || c == 24 || c == KEY_CTRL_R
 	       || c == 4 || c == 12 || c == 21 || c == 6 || c == 2 || c == 5 || c == 25 || c == 23 || c == 29
 	       || c == KEY_ESC || c == KEY_BS || c == KEY_UP || c == KEY_DOWN || c == KEY_LEFT || c == KEY_RIGHT || c == KEY_DEL;
@@ -1660,6 +1660,8 @@ static void execute(Cmdarg *cap)
 	case '`': cap->arg = 0; nv_gomark(cap); break;
 	/* C-]: Neovim sets 'tagfunc' to the language server's definitions */
 	case 29: nv_tagjump(cap); break;
+	/* K: Neovim maps it to vim.lsp.buf.hover() where a server is attached */
+	case 'K': if (!checkclearopq(cap->oap)) { if (B->lsp) lsp_go("textDocument/hover", NULL); else clearopbeep(cap->oap); } break;
 	case 9: nv_pcmark(cap); break;
 	case 15: cap->count1 = -cap->count1; nv_pcmark(cap); break;   /* nv_ctrlo() */
 	}

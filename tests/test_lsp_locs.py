@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Records what Neovim 0.12 makes of a language server's places and
 diagnostics, for test_lsp_locs.c.
-usage: test_lsp_locs.py N [SEED] --record FILE
+usage: RM_RTP=render-markdown.nvim:catppuccin-nvim test_lsp_locs.py N [SEED] --record FILE
        test_lsp_locs.py --serve FILE LOG   (the fake language server)
 A case is one JSON line.  "loc": files (some not UTF-8 clean, CR LF, past
 their end), a method and the server's answer (Location, Location[],
@@ -23,12 +23,17 @@ C-o; the first such case has "caps", what the client said it takes.
 "diag": a text, diagnostics [a, z) as lsp.h keeps them, the cursor, keys
 from Neovim's default maps ("]d" "[d" with a count, "]D" "[D"); "pos"
 the cursor after them, "back" after C-o and "more" 0 when Neovim said
-"No more valid diagnostics to move to".  As the server it answers any
+"No more valid diagnostics to move to".  "hover" (after the others, from
+SEED + 1): a text, the cursor and the server's answer to K
+(vim.lsp.buf.hover()): "lines" the float's, "at" its row, column, width
+and height on the screen (80 x 24, with test_core_markdown.lua's
+settings: Davy's render-markdown look, which sizes the float too), or
+"msg" what Neovim said.  As the server it answers any
 request about case k's m.c with its answer (logging the request, with
 the case's directory as ROOT/, to LOG, and on initialize what the client
 takes to LOG.init) and publishes its diagnostics when m.c is opened;
 clangd's textDocument/switchSourceHeader gets the case's o.c."""
-import concurrent.futures, json, os, random, subprocess, sys, tempfile, urllib.parse
+import concurrent.futures, json, os, random, subprocess, sys, tempfile, time, urllib.parse
 
 LUA = r'''
 local out = io.open(OUT, 'w')
@@ -87,6 +92,29 @@ for line in io.lines(IN) do
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes('<C-o>', true, false, true), 'x', false)
       r.back = here()
     end
+  elseif c.kind == 'hover' then
+    if client then vim.lsp.buf_attach_client(buf, client)
+    else client = vim.lsp.start({ name = 'python3', cmd = { 'python3', PY, '--serve', IN, LOG }, root_dir = ROOT }) end
+    vim.wait(5000, function() return vim.lsp.buf_is_attached(buf, client) and vim.lsp.get_client_by_id(client).initialized end)
+    vim.api.nvim_win_set_cursor(0, {c.cur[1] + 1, c.cur[2]})
+    vim.cmd('messages clear')
+    vim.lsp.buf.hover()
+    -- moved before the answer: ctx_is_valid() drops it
+    if c.move then vim.api.nvim_win_set_cursor(0, {c.move[1] + 1, c.move[2]}) end
+    local fw
+    vim.wait(5000, function()
+      for _, w in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_get_config(w).relative ~= '' then fw = w return true end
+      end
+      return vim.fn.execute('messages') ~= ''
+    end)
+    if fw then
+      vim.cmd('redraw')   -- the compositor places it (win_float_update_position())
+      r.lines = vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(fw), 0, -1, false)
+      local p = vim.api.nvim_win_get_position(fw)
+      r.at = {p[1], p[2], vim.api.nvim_win_get_width(fw), vim.api.nvim_win_get_height(fw)}
+      vim.api.nvim_win_close(fw, true)
+    else r.msg = vim.trim(vim.fn.execute('messages')) end
   else
     local ns = vim.api.nvim_create_namespace('t')
     vim.diagnostic.reset(ns, buf)
@@ -216,6 +244,37 @@ def gen_diag(r, k):
         nd.append({'lnum': l, 'col': c, 'end_lnum': el, 'end_col': ec, 'severity': 1, 'message': 'm'})
     return {'k': k, 'kind': 'diag', 'files': {'m.c': t}, 'diags': ds, 'nd': nd, 'cur': [cl, cc], 'keys': keys}
 
+def md(r):
+    """hover's Markdown: headings, blank lines in a row, thematic breaks,
+    code blocks, long lines that wrap, CR LF, tabs, wide characters"""
+    def one():
+        k = r.random()
+        if k < 0.1: return '#' * r.randint(1, 3) + ' ' + r.choice(WORDS)
+        if k < 0.25: return ''
+        if k < 0.35: return r.choice(['---', ' ***', '___', '- - -', '--', '* * *x'])
+        if k < 0.45: return '```%s\n%s\n```' % (r.choice(['', 'c', 'cpp']), r.choice(WORDS))
+        if k < 0.5: return ' '.join(r.choice(WORDS) for _ in range(r.randint(20, 40)))
+        return ' '.join(r.choice(WORDS + ['`x`', '**b**']) for _ in range(r.randint(1, 6)))
+    eol = '\r\n' if r.random() < 0.1 else '\n'
+    s = eol.join(one() for _ in range(r.choice([1, 2, 4, 8, 16, 30]))) + r.choice(['', '\n', '\n\n'])
+    # only blanks: Neovim 0.12 fails ("Invalid 'width'"), the core shows them
+    return s if s.strip() else md(r)
+
+def gen_hover(r, k):
+    t = '\n'.join(' '.join(r.choice(WORDS) for _ in range(r.choice([0, 2, 6, 12]))) for _ in range(r.choice([3, 12, 40]))) + '\n'
+    lines = t.split('\n')[:-1]
+    cl = r.randrange(len(lines))
+    lb = lines[cl].encode()
+    cc = r.choice([i for i in range(len(lb)) if lb[i] & 0xC0 != 0x80] or [0])
+    shape = r.choice(['md', 'md', 'md', 'plain', 'str', 'lang', 'list', 'null', 'empty', 'emptylist', 'nocontents'])
+    c = {'md': lambda: {'kind': 'markdown', 'value': md(r)}, 'plain': lambda: {'kind': 'plaintext', 'value': md(r)},
+         'str': lambda: md(r), 'lang': lambda: {'language': r.choice(['c', 'lean']), 'value': md(r)},
+         'list': lambda: [r.choice([md(r), {'language': 'c', 'value': md(r)}]) for _ in range(r.randint(1, 3))],
+         'empty': lambda: r.choice(['', {'kind': 'markdown', 'value': ''}]), 'emptylist': lambda: [],
+         'null': lambda: None, 'nocontents': lambda: None}[shape]()
+    res = None if shape == 'null' else {} if shape == 'nocontents' else {'contents': c}
+    return {'k': k, 'kind': 'hover', 'files': {'m.c': t}, 'cur': [cl, cc], 'result': res}
+
 def run_nvim(cases):
     d = tempfile.mkdtemp()
     for c in cases:
@@ -228,8 +287,15 @@ def run_nvim(cases):
     open(d + '/log', 'w').close()
     open(d + '/t.lua', 'w').write('local IN, OUT, ROOT, PY, LOG, client, caps = %r, %r, %r, %r, %r\n'
                                   % (d + '/in.jsonl', d + '/out.jsonl', d, os.path.abspath(__file__), d + '/log') + LUA)
-    subprocess.run(['nvim', '--clean', '--headless', '-c', 'set noswapfile nomore hidden', '-c', 'luafile ' + d + '/t.lua'],
-                   cwd=d, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, timeout=600)
+    # on an 80 x 24 screen: without a UI the compositor never places a float
+    # (nvim_win_get_position() is not where it shows)
+    tm = lambda *a: subprocess.run(['tmux', '-L', 'locs%d' % os.getpid(), *a], cwd=d, capture_output=True)
+    tm('new-session', '-d', '-x', '80', '-y', '24', '-c', d, 'nvim --clean -c "luafile %s" -c "set hidden nomore" -c "luafile %s/t.lua"'
+       % (os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_core_markdown.lua'), d))
+    for _ in range(6000):
+        if tm('has-session').returncode: break
+        time.sleep(0.1)
+    tm('kill-server')
     return [json.loads(l) for l in open(d + '/out.jsonl')]
 
 def u16(b, p):
@@ -263,7 +329,7 @@ def serve(path, log):
                 ('implementation', 'linkSupport'), ('typeDefinition', 'linkSupport'), ('documentSymbol', 'hierarchicalDocumentSymbolSupport')]},
                 sort_keys=True) + '\n')
             send({'jsonrpc': '2.0', 'id': m['id'], 'result': {'capabilities': {k: True for k in (
-                'definitionProvider', 'referencesProvider', 'implementationProvider', 'typeDefinitionProvider', 'documentSymbolProvider')}}})
+                'definitionProvider', 'referencesProvider', 'implementationProvider', 'typeDefinitionProvider', 'documentSymbolProvider', 'hoverProvider')}}})
         elif m.get('method') == 'textDocument/didOpen':
             td = p['textDocument']
             c, _ = case(td['uri'])
@@ -284,19 +350,21 @@ def serve(path, log):
 
 def edges(k):
     """A place the key cannot reach, rare at random: C-] past the file's end
-    ("^name\\s*(" guessed, ignoring case as tag.c does; nothing guessed, in
+    ("^name\\s*(" guessed, ignoring case as tag.c does, and n then finds the
+    next (the guess is the last search pattern); nothing guessed, in
     another file whose first line is blank or indented, and in this one), in
     a file that is not there, and gri past the end of one whose first line
     is indented"""
     def at(f, line): return {'uri': 'ROOT/' + f, 'range': {'start': {'line': line, 'character': 0}, 'end': {'line': line, 'character': 0}}}
     e = [('<C-]>', 'x = bar(1);\n', [0, 5], 'x\nbar (int a)\n', at('o.c', 9)),
+         ('<C-]>n', 'x = bar(1);\n', [0, 5], 'x\nbar (int a)\nbar(2)\n', at('o.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], 'x\nint BAR(void)\n', at('o.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], '  \nint y;\n', at('o.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], '\tint y;\nz\n', at('o.c', 9)),
          ('<C-]>', 'x\n = baz;\n', [1, 3], '', at('m.c', 9)),
          ('<C-]>', 'x = bar(1);\n', [0, 5], '', at(GONE, 0)),
          ('gri', 'x = bar(1);\n', [0, 5], '\t bar(\nx\n', at('o.c', 3))]
-    method = {'<C-]>': 'textDocument/definition', 'gri': 'textDocument/implementation'}
+    method = {'<C-]>': 'textDocument/definition', '<C-]>n': 'textDocument/definition', 'gri': 'textDocument/implementation'}
     return [{'k': k + i, 'kind': 'loc', 'files': {'m.c': m, 'o.c': o}, 'method': method[key], 'result': res, 'key': key, 'cur': cur}
             for i, (key, m, cur, o, res) in enumerate(e)]
 
@@ -307,6 +375,13 @@ def main():
     r = random.Random(seed)
     cases = [gen_loc(r, k) if k % 2 else gen_diag(r, k) for k in range(n)]
     cases += edges(n)
+    r = random.Random(seed + 1)
+    cases += [gen_hover(r, k) for k in range(len(cases), len(cases) + n // 2)]
+    # an unclosed fence (a block render-markdown skips, its fence hidden
+    # by conceal_lines), a paragraph starting with inline ``` (no fence),
+    # and K's answer after the cursor moved
+    h = lambda v, **o: dict({'kind': 'hover', 'files': {'m.c': 'int x;\nint y;\n'}, 'cur': [0, 4], 'result': {'contents': {'kind': 'markdown', 'value': v}}}, **o)
+    cases += [dict(c, k=len(cases) + i) for i, c in enumerate([h('x\n```'), h('x\n```c'), h('```x``` y\nz'), h('x', move=[1, 4])])]
     out = run_nvim(cases)
     with open(a[a.index('--record') + 1], 'w') as f:
         for c, o in zip(cases, out):

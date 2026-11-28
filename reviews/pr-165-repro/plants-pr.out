@@ -1,0 +1,29 @@
+caught: tests/test_keys_map.c:105: CHECK(!tools_key(&e, KEY_ESC)) failed  [keys_map] keys: SPC maps other than SPC i s also run in Visual mode (test_keys_map)
+caught: tests/test_keys_ex.c:298: CHECK(!check("abc. def foo\n  xy (o)\n\nhello world. Two\n\tq a\  [keys_ex] keys: * on a blank line says nothing instead of E348 (test_keys_ex)
+caught: test_lsp_locs: 23 of 305 cases differ from Neovim  [lsp_locs] keys: [d takes the diagnostic with the lowest column
+caught: test_lsp_locs: 12 of 305 cases differ from Neovim  [lsp_locs] keys: ]D and [D step to the next one, not the farthest
+caught: tests/test_lsp_locs.c:111: CHECK(e->buf->nomodifiable && !core_close(e, 1)) failed  [lsp_locs] keys: grr opens one reference instead of listing it
+caught: test_lsp_locs: 5 of 305 cases differ from Neovim  [lsp_locs] keys: C-] lists every definition
+caught: test_lsp_locs: 2 of 305 cases differ from Neovim  [lsp_locs] keys: C-] asks about a non-blank string, not only a keyword (find_ident_under_cursor() with FIND_IDENT)
+caught: test_lsp_locs: 2 of 305 cases differ from Neovim  [lsp_locs] keys: C-] with no definition says none found, not E426
+caught: test_lsp_locs: 2 of 305 cases differ from Neovim  [lsp_locs] keys: C-] names the keyword's start only in E426
+caught: test_lsp_locs: 3 of 305 cases differ from Neovim  [lsp_locs] keys: gO's error answer said as none found
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] keys: C-] to a file that is not there opens it (E429)
+caught: test_lsp_locs: 3 of 305 cases differ from Neovim  [lsp_locs] keys: C-] past the end of the file goes to its last line (E434)
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] keys: C-] makes no guesses at a place it cannot find (E435)
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] keys: C-] guesses "^name(" without the spaces before (\s*)
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] keys: C-] failing in another file leaves the cursor at its start, not its first non-blank
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] keys: C-] failing in the same file leaves the cursor at its line's start
+caught: test_lsp_locs: 12 of 305 cases differ from Neovim  [lsp_locs] keys: gd asks for the implementation, not the definition
+caught: test_lsp_locs: 21 of 305 cases differ from Neovim  [lsp_locs] keys: gd opens the server's first definition, not the list of them sorted
+caught: test_lsp_locs: 38 of 305 cases differ from Neovim  [lsp_locs] lsp: places not sorted by file and position (locations_to_items)
+caught: test_lsp_locs: 6 of 305 cases differ from Neovim  [lsp_locs] lsp: a tag's places sorted, not in the server's order (vim.lsp.tagfunc)
+caught: test_lsp_locs: 10 of 305 cases differ from Neovim  [lsp_locs] lsp: a Location alone taken as references
+caught: test_lsp_locs: 3 of 305 cases differ from Neovim  [lsp_locs] lsp: an error answer's words without the server's name
+caught: src/lsp/lsp.c:1019:50: runtime error: null pointer passed as argument 2, which is declared  [lsp_locs] lsp: a place in a file that cannot be read reads no file (undefined behaviour)
+caught: tests/test_lsp.c:1717: CHECK(f && !strcmp(f, uri[i][1])) failed  [lsp] lsp: a URI's #fragment kept in its file
+caught: tests/test_lsp.c:1717: CHECK(f && !strcmp(f, uri[i][1])) failed  [lsp] lsp: a drive's URI keeps the slash before it (/C:/x)
+caught: tests/test_tools_make.c:122: CHECK(runs() == 2) failed  [tools_make] make: a write runs it with its buffer in no window
+caught: test_lsp_locs: 51 of 305 cases differ from Neovim  [lsp_locs] make: grr's list opens on its last entry, not its first (copen)
+caught: test_lsp_locs: 60 of 305 cases differ from Neovim  [lsp_locs] make: grr's list names files by their whole path, not from the current directory
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] make: one place past the file's end goes to its last line (nvim_win_set_cursor())

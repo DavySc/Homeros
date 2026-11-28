@@ -65,13 +65,6 @@ const LspDiag *lsp_progress(const LspDoc *d, int *n);
    mark).  No allocation: asked every frame. */
 const char    *lsp_name(const LspDoc *d, int *work);
 
-/* Requests about byte pos: hover (K).
-   A new one cancels the last of its kind ($/cancelRequest).  lsp_answer is
-   the reply's text (Markdown) while the text is unchanged, else NULL. */
-enum { LSP_HOVER, LSP_NASK };
-void        lsp_ask(LspDoc *d, int kind, size_t pos);
-const char *lsp_answer(const LspDoc *d, int kind);
-
 /* Places a server names, as Neovim's quickfix entries
    (locations_to_items, symbols_to_items): the file, the line from 0 and
    the byte in it, and the text: the line's, or "[Kind] name" for a
@@ -88,7 +81,11 @@ typedef void (*LspLocFn)(void *ctx, const LspLoc *v, int n);
    their children after them; tag: places in the server's order, as
    vim.lsp.tagfunc takes them for C-]; references only from a list.  A
    file's lines come from its open document, else from the file (none if
-   it cannot be read).  0 asked, -1 no server. */
+   it cannot be read).  textDocument/hover (vim.lsp.buf.hover()): one
+   with path NULL, text the lines (convert_input_to_markdown_lines()),
+   line 1 for Markdown, 0 for plain text; n 0 an empty answer, -1 none; fn
+   is not called once d's text changed (ctx_is_valid()).  0 asked, -1 no
+   server. */
 int lsp_locs(LspDoc *d, const char *method, size_t pos, int tag, LspLocFn fn, void *ctx);
 
 /* When something shown changes (a reply comes in, the server dies) it

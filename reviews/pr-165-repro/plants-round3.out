@@ -1,0 +1,29 @@
+MISSED  [lsp_locs] 1 same-file branch of tools_locs gone (is it needed?)
+caught (does not compile)  [lsp_locs] 3 no position in the request (lsp)
+caught: test_lsp_locs: 28 of 305 cases differ from Neovim  [lsp_locs] 4 references without includeDeclaration
+caught: test_lsp_locs: 53 of 305 cases differ from Neovim  [lsp_locs] 5 gri asks for the type definition
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] 6 no linkSupport offered
+caught: test_lsp_locs: 12 of 305 cases differ from Neovim  [lsp_locs] 7 places in one file not sorted by position
+caught: test_lsp_locs: 22 of 305 cases differ from Neovim  [lsp_locs] 8 a symbol's container dropped
+caught: test_lsp_locs: 87 of 305 cases differ from Neovim  [lsp_locs] 10 ]d leaves no '' mark
+caught: tests/test_lsp_locs.c:170: CHECK(strstr(a, "echo $$") && strcmp(a, b)) failed  [lsp_locs] 12 :make after a list still not re-run by a write
+MISSED  [lsp_locs] 16 core_buf_enter re-enters the current buffer
+caught: test_lsp_locs: 85 of 305 cases differ from Neovim  [lsp_locs] 3b the position sent is always the file's start (lsp)
+caught: tests/test_lsp_locs.c:225: CHECK(done == 1 + (json_get(line, tk, 0, "error") >= 0)) failed  [lsp_locs] 22 an error answer reported as nothing found
+caught: test_lsp_locs: 85 of 305 cases differ from Neovim  [lsp_locs] 2 the cursor's position not sent (keys)
+caught: test_lsp_locs: 60 of 305 cases differ from Neovim  [lsp_locs] 9 names in the list not relative to the current directory
+caught: test_lsp_locs: 15 of 305 cases differ from Neovim  [lsp_locs] 11 an open document's lines read from the file
+MISSED  [lsp_locs] 14 C-] without a server says "not supported", not E426
+caught: test_lsp_locs: 69 of 305 cases differ from Neovim  [lsp_locs] 15 no message when nothing is found
+MISSED  [lsp_locs] 17 the file-alone place (SPC m a) moves the cursor to line 0
+caught: test_lsp_locs: 37 of 305 cases differ from Neovim  [lsp_locs] 18 ]d ignores its count
+caught: test_lsp_locs: 52 of 305 cases differ from Neovim  [lsp_locs] 19 gO asks for references
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] 21 C-] takes the last place
+caught: test_lsp_locs: 3 of 305 cases differ from Neovim  [lsp_locs] 22b an error answer reported as nothing found
+MISSED  [lsp_locs] 23 ]d ties to the last diagnostic in a column
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] 24 C-] guesses only the second pattern
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] 25 C-] the E435 guess without the message
+caught: test_lsp_locs: 1 of 305 cases differ from Neovim  [lsp_locs] 26 C-] E429 checks the current file, not the place's
+caught: test_lsp_locs: 12 of 305 cases differ from Neovim  [lsp_locs] 27 gd sends the type definition
+MISSED  [lsp_locs] 28 the search pattern left as C-]'s guess (no search_recompile)
+caught: test_lsp_locs: 6 of 305 cases differ from Neovim  [lsp_locs] 29 a list's lines from the server's text, not trimmed of tabs

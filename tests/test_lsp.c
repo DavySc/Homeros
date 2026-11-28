@@ -12,10 +12,11 @@
    - CatchUp: once editing stops, the diagnostics for the current version
      are shown within 2 s;
    and the server checks the protocol: versions +1, nothing before the
-   initialize reply, every change applies, a new request cancels the last,
-   a reply for each of its requests.  The test binary is also the fake
+   initialize reply, every change applies, a reply for each of its
+   requests.  The test binary is also the fake
    server (run with --fake). */
 #include <stdarg.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -320,7 +321,7 @@ static void fanswer(int k)
 		str_addf(&m, "%s", form[f][0]);
 		str_addf(&m, "#%d.%ld %ld 0 0 0 ", (int)getpid(), ++serial, sver);
 		str_addq(&m, sdoc + b, z - b);
-		str_addf(&m, "%s", form[f][1]);
+		str_addf(&m, "|%s", form[f][1]);   /* '|': split_lines() drops a last '\n' */
 	}
 	fsend(&m);
 	free(m.s);
@@ -658,9 +659,6 @@ static void fhandle(const char *m, size_t n)
 		if (npark == 64) wrong("64 requests parked");
 		park[npark].id = json_int(m, ft, id);
 		park[npark].cancelled = 0;
-		/* the design: a new request cancels the last of its kind */
-		for (int k = 0; k < npark; k++)
-			if (!park[k].cancelled) wrong("%s without cancelling %ld", meth, park[k].id);
 		park[npark].l = json_int(m, ft, json_get(m, ft, q, "line"));
 		park[npark].c = json_int(m, ft, json_get(m, ft, q, "character"));
 		fbyte(park[npark].l, park[npark].c);       /* must be a position in the text */
@@ -818,6 +816,29 @@ typedef struct { char key[32]; int s, e, point; } Seen;
 static Seen seen[4096];
 static int nseen;
 static long stat_new, stat_old, stat_moved, stat_answers;   /* what the checks saw */
+/* hover's answers (lsp_locs): each comes only for the text it was asked
+   about, so it names what stands at that byte now (the fake answers with
+   the character at the position, on its text) */
+static int answered;
+static void hovered(void *ctx, const LspLoc *v, int n)
+{
+	if (n <= 0) return;
+	size_t at = (size_t)(uintptr_t)ctx;
+	const char *s = strncmp(v->text, "```", 3) ? v->text : strchr(v->text, '\n') + 1;
+	char key[32], want[16];
+	long ver, cnt;
+	int off, wid[16];
+	size_t a0, z0;
+	CHECK(sscanf(s, "%31s %ld %ld %zu %zu%n", key, &ver, &cnt, &a0, &z0, &off) == 5);
+	off++;
+	text_read(t, 0, buf, len);
+	size_t z = at < len ? at + mstep((const unsigned char *)buf, len, at) : at;
+	if (getenv("LSP_DEBUG")) fprintf(stderr, "answer at %zu [%s] text [%.*s]\n", at, s, (int)len, buf);
+	stat_answers++;
+	msent((const unsigned char *)buf + at, z - at, ids + at, want, wid);
+	CHECK(!strncmp(s + off, want, strlen(want)) && s[off + strlen(want)] == '|');
+	answered = 1;
+}
 
 /* Every version's text and ids, and every edit with the ids it removed
    and its neighbours, so a diagnostic for an older version can be
@@ -1010,7 +1031,7 @@ static void scenario(int seed, const char *log)
 	LspDoc *d = lsp_open(path, t);
 	CHECK(d);
 	long latest = -1;
-	size_t asked[LSP_NASK] = { 0 };
+	size_t asked = 0;
 	for (int step = 0; step < 250; step++) {
 		unsigned a = rnd(100);
 		if (step == 0 && seed % 3 == 0) {
@@ -1040,12 +1061,13 @@ static void scenario(int seed, const char *log)
 			snapshot();
 			/* the server must count the joined character as one: ask what
 			   stands after it, and wait for the answer */
-			asked[0] = pos + 3;
-			for (int k = 0; k < 20 && !lsp_answer(d, 0); k++) {   /* the server may refuse it */
-				lsp_ask(d, 0, asked[0]);
-				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
+			asked = pos + 3;
+			answered = 0;
+			for (int k = 0; k < 20 && !answered; k++) {   /* the server may refuse it */
+				lsp_locs(d, "textDocument/hover", asked, 0, hovered, (void *)(uintptr_t)asked);
+				for (long long t0 = ms(); !answered && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
-			CHECK(lsp_answer(d, 0));
+			CHECK(answered);
 		} else if (step == 60) {
 			/* the infoview's raw access (package 14), the server up */
 			for (long long t0 = ms(); ms() - t0 < 1000; ) loop_once(10);
@@ -1126,18 +1148,18 @@ static void scenario(int seed, const char *log)
 			lsp_flush(d);
 			cur++;
 			snapshot();
-			asked[0] = 0;
-			for (int k = 0; k < 20 && !lsp_answer(d, 0); k++) {   /* the server may refuse it */
-				lsp_ask(d, 0, asked[0]);
-				for (long long t0 = ms(); !lsp_answer(d, 0) && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
+			asked = 0;
+			answered = 0;
+			for (int k = 0; k < 20 && !answered; k++) {   /* the server may refuse it */
+				lsp_locs(d, "textDocument/hover", asked, 0, hovered, (void *)(uintptr_t)asked);
+				for (long long t0 = ms(); !answered && ms() - t0 < 300; ) { loop_once(10); check_shown(d, &latest); }
 			}
-			CHECK(lsp_answer(d, 0));
+			CHECK(answered);
 			int n;
 			const LspDiag *g = lsp_diags(d, &n);
 			CHECK(seed % 3 != 2 || n);
 			for (int i = 0; i < n && seed % 3 == 0; i++) CHECK(atol(strchr(g[i].msg, ' ') + 1) != said);
 			edit(d, len, 0, "!", 1);   /* typed after the answer: the fake's request must be answered by now */
-			CHECK(!lsp_answer(d, 0));  /* the answer was for the text before it, though the edit is not sent yet */
 			lsp_flush(d);
 			cur++;
 			snapshot();
@@ -1156,9 +1178,8 @@ static void scenario(int seed, const char *log)
 			cur++;
 			snapshot();
 		} else if (a < 45) {
-			int k = (int)rnd(LSP_NASK);
-			asked[k] = charstart(rnd((unsigned)len + 1));
-			lsp_ask(d, k, asked[k]);
+			asked = charstart(rnd((unsigned)len + 1));
+			lsp_locs(d, "textDocument/hover", asked, 0, hovered, (void *)(uintptr_t)asked);
 		} else if (a < 46) {
 			lsp_restart(d);
 			cur++;
@@ -1167,25 +1188,6 @@ static void scenario(int seed, const char *log)
 			lsp_saved(d);
 		} else loop_once((int)rnd(a < 60 ? 30 : 4));
 		check_shown(d, &latest);
-		for (int k = 0; k < LSP_NASK; k++) {
-			const char *s = lsp_answer(d, k);
-			if (!s) continue;
-			char key[32];
-			long v;
-			int off;
-			long cnt;
-			size_t a0, z0;
-			CHECK(sscanf(s, "%31s %ld %ld %zu %zu%n", key, &v, &cnt, &a0, &z0, &off) == 5);
-			off++;
-			text_read(t, 0, buf, len);
-			size_t z = asked[k] < len ? asked[k] + mstep((const unsigned char *)buf, len, asked[k]) : asked[k];
-			if (getenv("LSP_DEBUG")) fprintf(stderr, "answer %d at %zu [%s] text [%.*s]\n", k, asked[k], s, (int)len, buf);
-			stat_answers++;
-			char want[16];
-			int wid[16];
-			msent((const unsigned char *)buf + asked[k], z - asked[k], ids + asked[k], want, wid);
-			CHECK(!strcmp(s + off, want));
-		}
 	}
 	/* CatchUp: editing stops (the server may have died: once the loop has
 	   seen it go, restart it) */

@@ -102,6 +102,7 @@ typedef struct Win {
 	size_t top, left, skipcol;
 	size_t scroll;             /* lines for CTRL-D and CTRL-U ('scroll'); 0 = half the height */
 	int wrap;                  /* 'wrap': off (FEATURES.md); set through core_set_wrap */
+	int lbr;                   /* 'linebreak' and 'breakindent': core_float's window only */
 	int conceal;               /* 'conceallevel': 2, or 0 (SPC u p, Davy's
 	                              org-toggle-pretty-entities): the core asks
 	                              syntax_conceal only when it is not 0 */
@@ -163,6 +164,7 @@ typedef struct Editor {
 	const PumItem *pum;        /* completion popup items (the caller's), or NULL */
 	int npum, pumsel;          /* how many, which is selected (-1 none) */
 	size_t pumcol;             /* byte in the cursor line where the completed word starts */
+	Win *pop;                  /* the float core_float shows, or NULL */
 	unsigned char *lb;         /* scratch copy of one line */
 	size_t lbcap;
 	/* the system clipboard, the backend's (backend.h); NULL: none, as
@@ -348,6 +350,13 @@ int  core_screen_move(Editor *e, long n);
    none), the completed word starting at byte col of the cursor line.  The
    items stay the caller's until the next call; n 0 hides the popup. */
 void core_pum(Editor *e, const PumItem *items, int n, int sel, size_t col);
+
+/* Neovim's LSP float (vim.lsp.util.open_floating_preview(), focusable
+   false): the lines of s[0, n), Markdown when md (drawn as a Markdown
+   buffer is) or plain text, in a window next to the cursor, replacing the
+   last one.  It closes when the cursor moves or leaves its window
+   (close_events CursorMoved, CursorMovedI, BufLeave) or s is NULL. */
+void core_float(Editor *e, const char *s, size_t n, int md);
 
 /* Draw tab page t's windows (NULL: the current one's) with their status
    lines, the command line and the popup into g; the layout takes g's size.

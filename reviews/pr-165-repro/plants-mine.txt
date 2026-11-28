@@ -1,0 +1,20 @@
+1 same-file branch of tools_locs gone (is it needed?)~src/tools/make.c~		if (e->buf->path && !strcmp(e->buf->path, v->path)) core_setpcmark(e);¶		else if (core_edit_file~		if (core_edit_file
+2 the cursor's position not sent (keys)~src/keys/keys.c~core_line_start(E, E->win->line) + E->win->col, found~0, found
+3 no position in the request (lsp)~src/lsp/lsp.c~{ str_lit(&q, ",\"position\":"); putpos(&q, d->t, pos); }~{ }
+4 references without includeDeclaration~src/lsp/lsp.c~		if (!strcmp(method, "textDocument/references")) str_lit(&q, ",\"context\":{\"includeDeclaration\":true}");¶~
+5 gri asks for the type definition~src/keys/keys.c~: m[2] == 'i' ? "textDocument/implementation" : m[2] == 't' ? "textDocument/typeDefinition"~: m[2] == 't' ? "textDocument/implementation" : m[2] == 'i' ? "textDocument/typeDefinition"
+6 no linkSupport offered~src/lsp/lsp.c~"\"definition\":{\"linkSupport\":true},\"typeDefinition\":{\"linkSupport\":true},\"implementation\":{\"linkSupport\":true},"~
+7 places in one file not sorted by position~src/lsp/lsp.c~	return c ? c : before(a->p, b->p) ? -1 : before(b->p, a->p);~	return c;
+8 a symbol's container dropped~src/lsp/lsp.c~in ? " in " : "", in ? in : "",~"", "",
+9 names in the list not relative to the current directory~src/tools/make.c~		if (k && !strncmp(f, cwd, k) && f[k] == '/') f += k + 1;¶~
+10 ]d leaves no '' mark~src/keys/normal.c~		setpcmark();¶		setcur(diag_pos(v[got].a));~		setcur(diag_pos(v[got].a));
+11 an open document's lines read from the file~src/lsp/lsp.c~			for (Srv *s = srvs; s && !d; s = s->link)~			for (Srv *s = srvs; 0 && s && !d; s = s->link)
+12 :make after a list still not re-run by a write~src/tools/make.c~	M.list = 0;¶~
+13 a URI's #fragment kept in the name~src/lsp/lsp.c~for (; f && *u && *u != '#'; u++)~for (; f && *u; u++)
+14 C-] without a server asks anyway~src/keys/normal.c~if (B->lsp) lsp_go("textDocument/definition", 1); else clearopbeep(cap->oap);~lsp_go("textDocument/definition", 1);
+15 no message when nothing is found~src/keys/keys.c~	if (!n) core_msg(E, "No %s found", what[k]);¶	else if (n > 0)~	if (n > 0)
+16 core_buf_enter re-enters the current buffer~src/core/core.c~return b == e->buf ? 0 : enter_buffer(e, b, ENTER_B);~return enter_buffer(e, b, ENTER_B);
+17 the file-alone place (SPC m a) moves the cursor to line 0~src/tools/make.c~		if (v->line != (size_t)-1) core_goto(e, v->line, v->col);~		core_goto(e, v->line == (size_t)-1 ? 0 : v->line, v->col);
+18 [D loops when it meets the same diagnostic again~src/keys/normal.c~ && to != got) got = to~) got = to
+19 gO not mapped to documentSymbol~src/keys/keys.c~m[1] == 'O' ? "textDocument/documentSymbol" : m[2] == 'r'~m[1] == 'O' ? "textDocument/references" : m[2] == 'r'
+20 file:///C:/x keeps its slash~src/lsp/lsp.c~	if (u[0] == '/' && u[1] && u[2] == ':') u++;¶~

@@ -271,7 +271,7 @@ keys: ]D and [D step to the next one, not the farthest~test TESTS=lsp_locs~~src/
 keys: grr opens one reference instead of listing it~test TESTS=lsp_locs~~src/keys/keys.c~tools_locs(E, v, n, k > 0);~tools_locs(E, v, n, k > 1);
 keys: C-] lists every definition~test TESTS=lsp_locs~~src/keys/keys.c~		tools_locs(E, v, 1, 0);~		tools_locs(E, v, n, 1);
 keys: C-] asks about a non-blank string, not only a keyword (find_ident_under_cursor() with FIND_IDENT)~test TESTS=lsp_locs~~src/keys/normal.c~	if ((col = find_ident(0, &z, &i)) < 0)~	if ((col = find_ident(1, &z, &i)) < 0)
-keys: C-] with no definition says none found, not E426~test TESTS=lsp_locs~~src/keys/keys.c~	if (k == 3 && n <= 0) core_msg~	if (0) core_msg
+keys: C-] with no definition says none found, not E426~test TESTS=lsp_locs~~src/keys/keys.c~else if (k == 3 && n <= 0) core_msg~else if (0) core_msg
 keys: C-] names the keyword's start only in E426~test TESTS=lsp_locs~~src/keys/normal.c~(int)(z - col), ml_get~1, ml_get
 keys: gO's error answer said as none found~test TESTS=lsp_locs~~src/keys/keys.c~	else if (k == 2 && v && n < 0) core_msg(E, "%s", v->text);¶~
 keys: C-] to a file that is not there opens it (E429)~test TESTS=lsp_locs~~src/keys/keys.c~	else if (stat(v->path, &(struct stat){ 0 })) core_msg~	else if (0) core_msg
@@ -325,3 +325,6 @@ keys: a map or SPC 5 {letter} leaves the keys pending (test_keys_map)~test TESTS
 keys: a lone operator or register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~int normal_pending(void) { return npend > 0 || oa.op_type != OP_NOP || oa.regname; }~int normal_pending(void) { return npend > 0; }
 keys: a lone register is not pending (test_keys_map)~test TESTS=keys_map~~src/keys/normal.c~ || oa.regname; }~; }
 keys: :Declare is not a command (test_keys_map)~test TESTS=keys_map~~src/keys/keys.c~decl = k == 7 && !strncmp(p, "Declare", 7)~decl = 0
+keys: K's answer shown after the cursor moved (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/keys.c~	if (k == 4 && (E->buf != asked.b~	if (0 && (E->buf != asked.b
+keys: K's error answer said as an empty one (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/keys.c~n < 0 ? core_msg(E, "No information available")~n < 0 ? core_msg(E, "Empty hover response")
+keys: K asks for the definition (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/normal.c~lsp_go("textDocument/hover", NULL)~lsp_go("textDocument/definition", NULL)

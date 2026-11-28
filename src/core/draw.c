@@ -491,15 +491,16 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 	   text area of the cursor line's rows, below syntax and render-markdown
 	   (low priority: it has no fg), not in the current window in Visual
 	   mode (win_line()); not under skipcol's "<<<" */
-	unsigned char cl = l == w->line && !(w == typing && e->ks.visual) ? FACE_CURSOR_LINE : 0;
+	unsigned char cl = l == w->line && w != e->pop && !(w == typing && e->ks.visual) ? FACE_CURSOR_LINE : 0;
 	for (int k = 0; cl && k < line_rows(w, l) && r + k < w->h; k++)
 		for (int c = k || cover < nw ? nw : cover; c < w->w; c++) {
 			Cell *z = wcell(g, w, r + k, c);
 			if (z) z->bg = cl;
 		}
+	Lbr lb = { 0, 1, 0 };
 	lit_init(&it, w->buf, l);
 	while ((k = lit_next(&it, &s))) {
-		int cw = core_cellw(w, s, k, 0, v);
+		int hd, cw = lbr_cellw(w, &lb, &it, s, k, v, &hd);
 		if (faced && (f0 == (size_t)-1 || i + k > f0 + sizeof fc)) {
 			size_t z = text_line_start(w->buf->text, l + 1) - 1;
 			f0 = i;
@@ -513,8 +514,10 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 		if (i == md.task_col) t0 = v;
 		if (drawn != 1) break;
 		/* a double-width character: after the '>' of a wrapping row's
-		   last cell (core_cellw's 3), the two cells of the character */
-		int lead = cw == 3 && *s != '\t', wide = *s >= 0x80 && cw - lead == 2;
+		   last cell (core_cellw's 3) and breakindent's hd blanks, the two
+		   cells of the character; a blank 'linebreak' widened, then blanks */
+		int gt = *s >= 0x80 && cw - hd == 3, lead = gt + hd, wide = *s >= 0x80 && cw - lead == 2,
+		    cn = *s != '\t' && *s >= 0x20 && *s < 0x7f ? 1 : cw - lead;
 		mh = hl_at(e, w, l, i, mh, &ms, &mz);
 		int im = mh && i >= ms;
 		unsigned char sb = im ? mh == 2 ? FACE_CUR_SEARCH : FACE_SEARCH : cl;
@@ -558,14 +561,15 @@ static int draw_line(Editor *e, Grid *g, Win *w, size_t l, int r, int rm)
 			   which the core draws dim, as '~') */
 			/* '>' is NonText alone, off CursorLine; '<' on it (multi_attr;
 			   measured) */
-			if (j < lead || (wide && j == 0 && !w->wrap && d - off == (size_t)tw - 1))
+			if (j < gt || (wide && j == 0 && !w->wrap && d - off == (size_t)tw - 1))
 				wputs(g, w, row, c, ">", FACE_NON_TEXT);   /* not in the area (measured) */
+			else if (j < lead) {}   /* breakindent */
 			else if (wide && j - lead == 1 && v == skip) {
 				/* in the area if its character is (measured) */
 				wputs(g, w, row, c, "<", FACE_NON_TEXT);
 				Cell *z = wcell(g, w, row, c);
 				if (z) z->bg = from < v && vis ? vis : sb;
-			} else put_cell(g, w, row, c, s, k, j - lead, cw - lead, face, vis ? vis : sb, ul);
+			} else put_cell(g, w, row, c, s, k, j - lead, cn, face, vis ? vis : sb, ul);
 		}
 		i += k;
 	}
@@ -812,6 +816,27 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 		}
 		x += cw;
 	}
+}
+
+/* core_float's window, once the cursor is where it was when it opened
+   (close_preview_autocmd()'s events), over the others: NormalFloat where
+   nothing gives a background ('winhighlight', style minimal) */
+static void draw_pop(Editor *e, Grid *g)
+{
+	Win *p = e->pop;
+	if (!p) return;
+	if (e->win != core_popat.w || e->win->line != core_popat.line || e->win->col != core_popat.col) {
+		core_float(e, NULL, 0, 0);
+		return;
+	}
+	for (int r = 0; r < p->h; r++)
+		for (int c = 0; c < p->w; c++) wputs(g, p, r, c, " ", FACE_NONE);
+	draw_win(e, g, p);
+	for (int r = 0; r < p->h; r++)
+		for (int c = 0; c < p->w; c++) {
+			Cell *z = wcell(g, p, r, c);
+			if (z && !z->bg && !(faces[z->face < FACES ? z->face : FACE_NONE].style & FACE_BG)) z->bg = FACE_NORMAL_FLOAT;
+		}
 }
 
 /* ---- the completion popup (popupmenu.c), one on the screen as there ---- */
@@ -1064,6 +1089,7 @@ static void draw(Editor *e, Grid *g, int cur)
 		draw_status(e, g, w);
 	}
 	if (cur && tabline_height(e)) draw_tabline(e, g);
+	if (cur) draw_pop(e, g);
 	/* the command line, or the mode and the last message (showmode) */
 	int r = e->layout->top + e->layout->size[ROWS];
 	Win *w = e->win;
