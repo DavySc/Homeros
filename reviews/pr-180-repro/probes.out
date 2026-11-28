@@ -1,0 +1,118 @@
+== p1_stale
+--- K at 0,4; cursor to 1,4; K (answers: line 0 text, line 1 null): pop y 2 x 8 w 17 h 2 lines 0, msg [No information available]
+  |  1 int x;                                        |
+  |2   int y;                                        |
+  |  1 int ANSWER FOR LINE 0                         |
+  |~       c████████████████                         |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  | NORMAL  m.c          c · utf-8    2:5   66% |
+  |No information available                          |
+initialize ""
+initialized ""
+textDocument/didOpen ""
+textDocument/hover {"line": 0, "character": 4}
+textDocument/hover {"line": 1, "character": 4}
+== p2_buf
+--- K at 0,0: pop y 1 x 4 w 17 h 2 lines 0, msg ["m.c" 3L, 30B]
+  |1   int x;                                        |
+  |  1 ANSWER FOR LINE 0                             |
+  |  2 c████████████████                             |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  | NORMAL  m.c          c · utf-8    1:1   Top |
+  |"m.c" 3L, 30B                                     |
+--- after :e o.c: pop y 1 x 4 w 17 h 2 lines 0, msg ["o.c" 2L, 16B]
+  |1   char o;                                       |
+  |  1 ANSWER FOR LINE 0                             |
+  |~   c████████████████                             |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  | NORMAL  o.c          c · utf-8    1:1   Top |
+  |"o.c" 2L, 16B                                     |
+== p4_first
+--- first K at 2,4: pop y 3 x 8 w 20 h 9 lines 0, msg ["m.c" 3L, 30B]
+  |  2 int x;                                                  |
+  |  1 int y;                                                  |
+  |3   int foo(int x);                                         |
+  |~         󰲥 function `foo`                                  |
+  |~       ────────────────────                                |
+  |~       → `int`                                             |
+  |~       Parameters:                                         |
+  |~       ● `int x`                                           |
+  |~                                                           |
+  |~       Adds one.                                           |
+  |~       ────────────────────                                |
+  |~       c███████████████████                                |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  | NORMAL  m.c                    c · utf-8    3:5   Bot |
+  |"m.c" 3L, 30B                                               |
+--- second K at 2,4: pop y 3 x 8 w 20 h 10 lines 0, msg ["m.c" 3L, 30B]
+  |  2 int x;                                                  |
+  |  1 int y;                                                  |
+  |3   int foo(int x);                                         |
+  |~         󰲥 function `foo`                                  |
+  |~       ────────────────────                                |
+  |~       → `int`                                             |
+  |~       Parameters:                                         |
+  |~       ● `int x`                                           |
+  |~                                                           |
+  |~       Adds one.                                           |
+  |~       ────────────────────                                |
+  |~       c███████████████████                                |
+  |~       int foo(int x)                                      |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  |~                                                           |
+  | NORMAL  m.c                    c · utf-8    3:5   Bot |
+  |"m.c" 3L, 30B                                               |
+== p5_edit
+--- K then x: pop none, msg ["m.c" 3L, 30B]
+  |1   int ;                                         |
+  |  1 int y;                                        |
+  |  2 int foo(int x);                               |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  |~                                                 |
+  | NORMAL  m.c ●        c · utf-8    1:5   Top |
+  |"m.c" 3L, 30B                                     |
+initialize ""
+initialized ""
+textDocument/didOpen ""
+textDocument/hover {"line": 0, "character": 4}
+textDocument/didChange ""
+textDocument/hover {"line": 0, "character": 4}
+textDocument/hover {"line": 0, "character": 4}

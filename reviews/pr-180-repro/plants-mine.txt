@@ -1,0 +1,19 @@
+mine 1: the float stays when another window becomes current~test TESTS=core_markdown~~src/core/draw.c~	if (e->win != core_popat.w || e->win->line~	if (e->win->line
+mine 2: the float stays when the cursor changes column only~test TESTS=core_markdown~~src/core/draw.c~ || e->win->col != core_popat.col) {~) {
+mine 3: the float always opens below the cursor~test TESTS=lsp_locs~~src/core/core.c~below = w->h - wrow > wrow;~below = 1;
+mine 4: the float not kept on the screen's right edge~test TESTS=lsp_locs~~src/core/core.c~	if (p->x > e->cols - p->w) p->x = e->cols - p->w;¶~
+mine 5: blank lines after an @param line kept (split_lines no_blank)~test TESTS=lsp_locs~~src/lsp/lsp.c~		desc &= !ann;~		desc &= 1;
+mine 6: a blank line before an indented code block dropped~test TESTS=lsp_locs~~src/lsp/lsp.c~if (desc || !noblank || !blank || code)~if (desc || !noblank || !blank)
+mine 7: K's answer shown in another buffer at the same cursor~test TESTS=lsp_locs~~src/keys/keys.c~(E->buf != asked.b || E->win->line~(E->win->line
+mine 8: an empty hover value opens a float~test TESTS=lsp_locs~~src/lsp/lsp.c~ || tk[x].z == tk[x].a) return 0;~) return 0;
+mine 9: the blank line after a thematic break kept~test TESTS=lsp_locs~~src/core/core.c~				if (l + 1 < k && BLANK(l + 1)) l++;¶~
+mine 10: K with an operator pending asks for hover (d K)~test TESTS=lsp_locs~~src/keys/normal.c~case 'K': if (!checkclearopq(cap->oap)) {~case 'K': if (1) {
+mine 11: K without a server asks anyway~test TESTS=lsp_locs~~src/keys/normal.c~if (B->lsp) lsp_go("textDocument/hover", NULL); else clearopbeep(cap->oap);~lsp_go("textDocument/hover", NULL);
+mine 12: CR LF in a hover value kept as CR~test TESTS=lsp_locs~~src/lsp/lsp.c~if (*q != '\r' || (q[1] != '\n' && (*q = '\n'))) p[k++] = *q;~p[k++] = *q;
+mine 13: plain text hover drawn as Markdown~test TESTS=lsp_locs~~src/lsp/lsp.c~*v = (LspLoc){ NULL, o.s, !plain, 0 };~*v = (LspLoc){ NULL, o.s, 1, 0 };
+mine 14: the float's width not capped at the window's~test TESTS=core_markdown~~src/core/core.c~	return wd < (size_t)cw ? (int)wd : cw;~	return (int)wd;
+mine 15: a {language, value} hover without its fences~test TESTS=lsp_locs~~src/lsp/lsp.c~		str_lit(o, "```\n");~		str_lit(o, "");
+mine 16: the cursor line's colour drawn in the float~test TESTS=core_markdown~~src/core/draw.c~l == w->line && w != e->pop && !(w == typing~l == w->line && !(w == typing
+mine 17: breakindent's wrap offset wrong past the first row~test TESTS=core_markdown~~src/core/core.c~			wc = (wc - W) % W;~			wc = wc % W;
+mine 6: a blank line before an indented code block dropped~test TESTS=lsp_locs~~src/lsp/lsp.c~if (desc || !noblank || !blank || code)~if (desc || !noblank || !blank || (code && 0))
+mine 19: only a second K's float leaves the first allocated (closing still frees)~test TESTS=lsp_locs~~src/core/core.c~	Win *p = e->pop, *w = e->win;¶	if (p) {~	Win *p = e->pop, *w = e->win;¶	if (p && !s) {

@@ -1,0 +1,18 @@
+a.cpp: server yes
+pop yes msg []
+  |  3 #include <vector>                                                           |
+  |  2 /// Adds one to x.                                                          |
+  |  1 int foo(int x) { return x + 1; }                                            |
+  |4   int main() { std::vector<int> v; v.push_back(foo(1)); return v.size(); }    |
+  |~                                                  󰲥 function `foo`             |
+  |~                                                ────────────────────           |
+  |~                                                → `int`                        |
+  |~                                                Parameters:                    |
+  |~                                                ● `int x`                      |
+  |~                                                                               |
+  |~                                                Adds one to x.                 |
+  |~                                                ────────────────────           |
+  |~                                                cpp█████████████████           |
+  |~                                                                               |
+  |~                                                                               |
+  |~                                                                               |

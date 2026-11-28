@@ -1,0 +1,18 @@
+NOT CAUGHT  mine 1: the float stays when another window becomes current
+CAUGHT  mine 2: the float stays when the cursor changes column only  [test_core_markdown: 1345 render-markdown screens: 30 differ (29 known, not compared)]
+CAUGHT  mine 3: the float always opens below the cursor  [test_lsp_locs: 26 of 462 cases differ from Neovim]
+NOT CAUGHT  mine 4: the float not kept on the screen's right edge
+NOT CAUGHT  mine 5: blank lines after an @param line kept (split_lines no_blank)
+NOT CAUGHT  mine 7: K's answer shown in another buffer at the same cursor
+CAUGHT  mine 8: an empty hover value opens a float  [test_lsp_locs: 16 of 462 cases differ from Neovim]
+CAUGHT  mine 9: the blank line after a thematic break kept  [test_lsp_locs: 5 of 462 cases differ from Neovim]
+NOT CAUGHT  mine 10: K with an operator pending asks for hover (d K)
+NOT CAUGHT  mine 11: K without a server asks anyway
+CAUGHT  mine 12: CR LF in a hover value kept as CR  [test_lsp_locs: 6 of 462 cases differ from Neovim]
+CAUGHT  mine 13: plain text hover drawn as Markdown  [test_lsp_locs: 10 of 462 cases differ from Neovim]
+CAUGHT  mine 14: the float's width not capped at the window's  [==15904==ABORTING]
+CAUGHT  mine 15: a {language, value} hover without its fences  [test_lsp_locs: 17 of 462 cases differ from Neovim]
+CAUGHT  mine 16: the cursor line's colour drawn in the float  [test_core_markdown: 1345 render-markdown screens: 126 differ (29 known, not compared)]
+NOT CAUGHT  mine 17: breakindent's wrap offset wrong past the first row
+NOT CAUGHT  mine 6: a blank line before an indented code block dropped
+CAUGHT  mine 19: only a second K's float leaves the first allocated (closing still frees)  [SUMMARY: AddressSanitizer: 42864 byte(s) leaked in 94 allocation(s).]

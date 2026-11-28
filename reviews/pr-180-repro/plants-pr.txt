@@ -1,0 +1,22 @@
+core: the LSP float without 'breakindent' (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	if (bri > 0) {~	if (0) {
+core: the LSP float without 'linebreak' (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	if (isbreak(*s) && !isbreak(nx) && seen) {~	if (0 && isbreak(*s) && !isbreak(nx) && seen) {
+core: 'linebreak' in a line's leading break characters (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~!isbreak(nx) && seen) {~!isbreak(nx)) {
+core: 'breakindent' without its min:20 (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~int bri = b->ind < W - 20 ? b->ind : W - 20 > 0 ? W - 20 : 0,~int bri = b->ind,
+core: breakindent's blanks drawn as the character (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~lead = gt + hd,~lead = gt,
+core: the float keeps the rows of a fence with a language (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~(c == 1 && !d.nlang && l < v)~(c == 1 && l < v)
+core: the float keeps the rows of closing fences (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~(c == 3 && o < v) ||~(c == 3 && o < v && 0) ||
+core: the float wraps lines that fit (render-markdown's nowrap) (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~p->wrap = !(md && fits);~p->wrap = !(md && fits && 0);
+core: 'linebreak' without 'wrap' (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~	if (!w->lbr || !w->wrap || W <= 0) return size;~	if (!w->lbr || W <= 0) return size;
+core: render-markdown's view without its 20 lines past the window (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~v = (size_t)p->h + 20;~v = (size_t)p->h;
+core: the LSP float stays when the cursor moves (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~	if (e->win != core_popat.w || e->win->line != core_popat.line || e->win->col != core_popat.col) {~	if (0) {
+core: the LSP float without NormalFloat (test_core_markdown)~test TESTS=core_markdown~~src/core/draw.c~ & FACE_BG)) z->bg = FACE_NORMAL_FLOAT;~ & FACE_BG)) z->bg = 0;
+core: a Markdown buffer does not attach render-markdown (its float keeps conceal_lines) (test_core_markdown)~test TESTS=core_markdown~~src/core/core.c~rm_attached |= ft && !strcmp(ft, "markdown");~rm_attached |= ft && !strcmp(ft, "markdown") && 0;
+core: the first float sized as render-markdown does, without conceal_lines (test_lsp_locs)~test TESTS=lsp_locs~~src/core/core.c~	for (int pass = rm_attached; md && pass < 2; pass++) {~	for (int pass = 1; md && pass < 2; pass++) {
+core: conceal_lines on the fences of blocks render-markdown skips not counted (test_lsp_locs)~test TESTS=lsp_locs~~src/core/core.c~ || (!c && fence(b->text, l))~ || (!c && fence(b->text, l) && 0)
+core: a paragraph starting with inline ``` taken for a fence (test_lsp_locs)~test TESTS=lsp_locs~~src/core/core.c~(past = 1) && c == '`' && s[j] == '`')~(past = 1) && 0)
+core: a second K's float leaves the first one allocated (test_lsp_locs)~test TESTS=lsp_locs~~src/core/core.c~	Win *p = e->pop, *w = e->win;¶	if (p) {~	Win *p = e->pop, *w = e->win;¶	if (p && 0) {
+keys: C-] with no definition says none found, not E426~test TESTS=lsp_locs~~src/keys/keys.c~else if (k == 3 && n <= 0) core_msg~else if (0) core_msg
+keys: K's answer shown after the cursor moved (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/keys.c~	if (k == 4 && (E->buf != asked.b~	if (0 && (E->buf != asked.b
+keys: K's error answer said as an empty one (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/keys.c~n < 0 ? core_msg(E, "No information available")~n < 0 ? core_msg(E, "Empty hover response")
+keys: K asks for the definition (test_lsp_locs)~test TESTS=lsp_locs~~src/keys/normal.c~lsp_go("textDocument/hover", NULL)~lsp_go("textDocument/definition", NULL)
+lsp: a hover answer used after the text changed (LspSync mapreply, ctx_is_valid)~test TESTS=lsp~~src/lsp/lsp.c~	if (!d || !current(d, w->ver)) return -2;~	if (!d) return -2;

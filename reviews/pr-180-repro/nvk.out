@@ -1,0 +1,34 @@
+--- first K
+  2 int x;
+  1 int y;
+3   int foo(int x);
+~       ### function foo
+~       ────────────────────
+~       → int
+~       Parameters:
+~       - int x
+~
+~       Adds one.
+~       ────────────────────
+~       int foo(int x)
+~
+~
+~
+~
+--- second K
+  2 int x;
+  1 int y;
+3   int foo(int x);
+~       ### function foo
+~       ────────────────────
+~       → int
+~       Parameters:
+~       - int x
+~
+~       Adds one.
+~       ────────────────────
+~       int foo(int x)
+~
+~
+~
+~
