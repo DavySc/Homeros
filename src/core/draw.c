@@ -724,8 +724,7 @@ static void draw_status(Editor *e, Grid *g, Win *w)
 	stl_add(&t, core_modified(b) ? " \xe2\x97\x8f " : " ", c, 0);
 	/* a SQL buffer's connection, marked while logged in (package 22's,
 	   agreed by thread 0): SSMS's status bar names it */
-	int live;
-	const char *conn = sql_status(b, &live);
+	const char *conn = sql_status(e, b);
 	if (conn) {
 		stl_add(&t, " ", c, 0);
 		stl_add(&t, conn, c, 0);

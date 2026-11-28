@@ -16,7 +16,6 @@
 #include "kitten.h"
 #include "loop.h"
 #include "tools.h"
-#include "tools.h"
 
 static void feed(Editor *e, const char *s)
 {

@@ -459,11 +459,11 @@ static void snippets(void)
 {
 	const char *d, *b, *n;
 	size_t at;
-	int sql = P.what == PICK_SQL, live = 0;
+	int sql = P.what == PICK_SQL;
 	P.nit = P.nshown = P.an = 0;
 	P.sel = P.top = 0;
 	P.pvfor = -1;
-	while ((n = sql ? sql_pick(P.e, (int)P.nit, &live) : snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
+	while ((n = sql ? sql_pick(P.e, (int)P.nit) : snip_get(P.e, P.prompt, P.plen, (int)P.nit, &d, &b)) && !add(n, strlen(n), NULL, 0, 0, 0, 0, 0)
 	       && (sql || (!put("", 1, &at) && !put(d, strlen(d) + 1, &at) && !put(b, strlen(b) + 1, &at)))) {}
 }
 

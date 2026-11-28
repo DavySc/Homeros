@@ -108,7 +108,7 @@ static const char *picked(void)
 	static char t[4096];
 	const char *n;
 	*t = 0;
-	for (int i = 0, live; (n = sql_pick(&e, i, &live)) && strlen(t) + strlen(n) + 2 < sizeof t; i++) strcat(strcat(t, n), " ");
+	for (int i = 0; (n = sql_pick(&e, i)) && strlen(t) + strlen(n) + 2 < sizeof t; i++) strcat(strcat(t, n), " ");
 	return t;
 }
 
@@ -159,6 +159,7 @@ int main(void)
 	put("ms/a.sql", "select 1 as one\ngo\nprint 'between'\ngo 2\nselect 2 as two\n", 0600);
 	CHECK(!core_open(&e, "ms/a.sql"));
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "no connections file"));
+	CHECK((*e.msg = 0, !sql_connect(&e, "")) && strstr(e.msg, "no connections file") && tools_key(&e, KEY_ESC) && tools_key(&e, KEY_ESC));   /* the picker says why it is empty */
 	/* the longest dir line wins wherever it is; ~ is HOME; a folder with a
 	   space; Postgres's port by default */
 	snprintf(f, sizeof f, "ms mssql 127.0.0.1 sa master trust pass=%s\npg pg 127.0.0.1 postgres postgres trust pass=%s\n"
@@ -167,7 +168,7 @@ int main(void)
 		"cs mssql 127.0.0.1 sa hcs trust pass=%s\nlim pg 127.0.0.1 hlim postgres trust pass=%s\nnohost mssql nohost.invalid sa master pass=x\n"
 		"sp mssql 127.0.0.1 hsp master trust pass=Ho meros 1 x\r\nbypass=x mssql 127.0.0.1 hpw master trust\tpass=Ho pass=1  \n"
 		"notrust mssql 127.0.0.1 sa master pass=%s\nbadpw mssql 127.0.0.1 sa master trust pass=x\n"
-		"srv mssql 127.0.0.1 sa - trust pass=%s\npgs pg 127.0.0.1 postgres - trust pass=%s\nsrvx mssql nohost.invalid sa - pass=x\n", sa, pg, dir, dir, dir, sa, pg, sa, sa, pg);
+		"srv mssql 127.0.0.1 sa - trust pass=%s\npgs pg 127.0.0.1 postgres - trust pass=%s\nsrvx mssql nohost.invalid sa - pass=x\n#old mssql 10.0.0.1 sa master pass=x\nhalf mssql 127.0.0.1 sa\npgms mssql 127.0.0.1 sa - trust pass=%s\n", sa, pg, dir, dir, dir, sa, pg, sa, sa, pg, sa);
 	put(conf, f, 0644);
 #ifndef _WIN32   /* there the profile is the user's (sql.c, as libpq) */
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(e.msg, "others can read it"));
@@ -382,38 +383,61 @@ int main(void)
 	put("msx/o.sql", "select 1\n", 0600);
 	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && strcpy(e.msg, "kept") && !sql_catalog(&e, e.buf, "hcat", hcat, cat) && !strcmp(e.msg, "kept"));
 	/* the status line names the buffer's connection, marked while logged
-	   in; the picker lists the file's connections, a live one marked */
-	int live = 1;
+	   in; the picker lists the file's connections (not a commented or a
+	   short line), a live one marked */
 	put("ms/cn.sql", "select db_name() as d\n", 0600);
-	CHECK(!core_edit_file(&e, "ms/cn.sql", 0) && !strcmp(sql_status(e.buf, &live), "ms") && !live && strstr(screen(), " cn.sql  ms "));
-	CHECK(strstr(picked(), "ms/master ") && strstr(picked(), "srv ") && strstr(picked(), "pgs ") && !strstr(picked(), "dir"));
+	CHECK(!core_edit_file(&e, "ms/cn.sql", 0) && !strcmp(sql_status(&e, e.buf), "ms") && strstr(screen(), " cn.sql  ms "));
+	CHECK(strstr(picked(), "ms/master ") && strstr(picked(), "srv ") && strstr(picked(), "pgs ") && !strstr(picked(), "dir") && !strstr(picked(), "#old") && !strstr(picked(), "half"));
 	CHECK(sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 master\n"));
-	CHECK(!strcmp(sql_status(e.buf, &live), "ms \xe2\x9c\x93") && live && strstr(screen(), " ms \xe2\x9c\x93 ") && strstr(picked(), "ms \xe2\x9c\x93 "));
-	CHECK(!sql_disconnect(&e) && !strcmp(sql_status(e.buf, &live), "ms") && !live);
-	/* name/db: that connection with another database */
-	CHECK(!sql_connect(&e, "ms/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n") && !strcmp(sql_status(e.buf, &live), "ms/hcs \xe2\x9c\x93"));
-	CHECK(!sql_disconnect(&e) && sql_connect(&e, "nope/hcs") && strstr(e.msg, "no connection nope"));
+	CHECK(!strcmp(sql_status(&e, e.buf), "ms \xe2\x9c\x93") && strstr(screen(), " ms \xe2\x9c\x93 ") && strstr(picked(), "ms \xe2\x9c\x93 "));
+	CHECK(!sql_disconnect(&e) && !strcmp(sql_status(&e, e.buf), "ms"));
+	/* a buffer's folder is looked up once: a dir line added later shows
+	   at its next F5 or :Connect (src/sql/README.md) */
+	CHECK(!core_edit_file(&e, "msx/o.sql", 0) && !sql_status(&e, e.buf));
+	FILE *cf = fopen(conf, "a");
+	CHECK(cf && fprintf(cf, "dir %s/msx ms\n", dir) > 0 && !fclose(cf) && !sql_status(&e, e.buf) && !strstr(screen(), " o.sql  ms"));
+	CHECK(!core_edit_file(&e, "ms/cn.sql", 0));
+	/* name/db: that connection with another database; a name is whole */
+	CHECK(!sql_connect(&e, "ms/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n") && !strcmp(sql_status(&e, e.buf), "ms/hcs \xe2\x9c\x93"));
+	CHECK(!sql_disconnect(&e) && sql_connect(&e, "nope/hcs") && strstr(e.msg, "no connection nope") && sql_connect(&e, "sr") && strstr(e.msg, "no connection sr "));
 	/* :Connect alone opens the picker; a server alone logs in to read its
-	   databases, and the picker opens again with them; Enter connects */
-	CHECK(!sql_connect(&e, "") && !strstr(screen(), "srv/") && (typed("srv"), strstr(screen(), " srv")));
+	   databases (not Postgres's templates; not another connection's whose
+	   name starts with it), and the picker opens again with them; Enter
+	   connects */
+	CHECK(strstr(f5("ms/mkdb.sql", "if db_id('my db') is null create database [my db]\n"), "Completion") && !sql_disconnect(&e));
+	CHECK(!core_edit_file(&e, "ms/cn.sql", 0) && !sql_connect(&e, "") && !strstr(screen(), "srv/") && (typed("srv"), strstr(screen(), " srv")));
 	typed("\r");
 	for (int i = 0; i < 300 && !strstr(picked(), "srv/hcs"); i++) loop_once(10);
-	CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && !strstr(picked(), "pgs/"));
-	CHECK(!strcmp(sql_status(e.buf, &live), "srv") && strstr(screen(), " Connections "));   /* open again */
+	CHECK(strstr(picked(), "srv/master ") && strstr(picked(), "srv/hcs ") && strstr(picked(), "srv/my db ") && !strstr(picked(), "pgs/") && !strstr(picked(), "srvx/"));
+	CHECK(!strcmp(sql_status(&e, e.buf), "srv") && strstr(screen(), " Connections "));   /* open again */
 	typed("srv/hcs\r");
-	CHECK(!strcmp(sql_status(e.buf, &live), "srv/hcs") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n"));
-	CHECK(!sql_connect(&e, "srv/hcs \xe2\x9c\x93") && !strcmp(sql_status(e.buf, &live), "srv/hcs"));   /* a live item, its mark cut */
+	for (int i = 0; i < 50; i++) loop_once(10);   /* a database of a server alone is no server alone: no picker again */
+	CHECK(!strcmp(sql_status(&e, e.buf), "srv/hcs") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 hcs\n"));
+	CHECK(strstr(picked(), " srv/hcs \xe2\x9c\x93 ") && !strstr(picked(), " srv/master \xe2\x9c\x93") && !strstr(picked(), " srv \xe2\x9c\x93"));   /* only the live one marked */
+	CHECK(!sql_connect(&e, "srv/hcs \xe2\x9c\x93") && !strcmp(sql_status(&e, e.buf), "srv/hcs"));   /* a live item, its mark cut */
 	CHECK(sql_disconnect(&e));
-	/* the server alone's own database: SQL Server's default; Postgres's postgres;
-	   a key before the list comes keeps the picker shut */
+	/* a database whose name holds a space, picked and typed */
+	CHECK(!sql_connect(&e, "") && (typed("srv/my db\r"), !strcmp(sql_status(&e, e.buf), "srv/my db")) && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 my db\n") && !sql_disconnect(&e));
+	CHECK(!sql_connect(&e, "srv/my db") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 my db\n") && !sql_disconnect(&e));
+	/* the server alone's own database: SQL Server's default; Postgres's
+	   postgres; a key before the list comes, or the terminal open, keeps
+	   the picker shut */
 	CHECK(!sql_connect(&e, "srv") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 master\n") && !sql_disconnect(&e));
+	CHECK(!sql_connect(&e, "srv"));
+	keys_input(&e, KEY_CTRL_DOT, 0);
+	for (int i = 0; i < 100; i++) loop_once(10);   /* the read takes 50 to 80 ms (PR 179's review) */
+	CHECK(tools_term() && strstr(picked(), "srv/hcs") && !strstr(screen(), " Connections ") && (keys_input(&e, KEY_CTRL_DOT, 0), !tools_term()) && !strstr(screen(), " Connections "));
+	/* a name that starts another's (pg, pgms): each its own server's databases */
+	CHECK(!sql_connect(&e, "pgms") && (typed("j"), 1));
+	for (int i = 0; i < 300 && !strstr(picked(), "pgms/master"); i++) loop_once(10);
+	CHECK(strstr(picked(), " pgms/master ") && strstr(picked(), " pg/postgres ") && !strstr(picked(), " pg/master"));
 	CHECK(!sql_connect(&e, "srvx"));   /* a server that cannot be reached: its error, no picker */
 	for (int i = 0; i < 500 && !strstr(e.msg, "srvx: "); i++) loop_once(10);
 	CHECK(strstr(e.msg, "sql: srvx: ") && strstr(e.msg, "nohost.invalid") && !strstr(screen(), " Connections "));
 	put("pg/cn.sql", "select current_database() as d\n", 0600);
 	CHECK(!core_edit_file(&e, "pg/cn.sql", 0) && !sql_connect(&e, "pgs") && (typed("j"), 1));
 	for (int i = 0; i < 300 && !strstr(picked(), "pgs/postgres"); i++) loop_once(10);
-	CHECK(strstr(picked(), "pgs/postgres ") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 postgres\n") && !sql_disconnect(&e));
+	CHECK(strstr(picked(), "pgs/postgres ") && !strstr(picked(), "template") && !strstr(screen(), " Connections ") && sql_key(&e, KEY_F5) == 1 && strstr(until("Completion time"), "\n1 \xe2\x94\x82 postgres\n") && !sql_disconnect(&e));
 	/* F5 asks for an undeclared @variable on the command line, the file's
 	   own DECLARE as its default; Enter runs; the value is kept, before
 	   each batch that needs it, on its first line */

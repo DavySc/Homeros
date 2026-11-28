@@ -49,7 +49,7 @@ typedef struct {
 	int said, err;          /* a message block is open (its rule out); an error's text is */
 	int looked;             /* the folder's connection looked up (conn) */
 	int bad;                /* the run's worst: 1 an error, 2 cancelled */
-	char status[600];       /* the results' status line (Buf.status), SSMS's bar under the query */
+	char status[2 * NAME + 100];   /* the results' status line (Buf.status), SSMS's bar under the query */
 	struct Grid { size_t line, rows; int rn, n, *w; } *g;
 	struct Span { size_t a; unsigned n; unsigned char f; } *sp;
 	struct Cut { size_t at, p, n; } *cut;   /* a cut cell's first byte in the results, its whole value in whole */
@@ -285,9 +285,9 @@ static void end(Sess *s)
 	s->q.n = 0, put(s, "", 0);
 	if (!ran) return;   /* a connection dropped between runs: the last run's line stays */
 	for (size_t i = 0; i < s->ng; i++) rows += s->g[i].rows;
-	snprintf(s->status, sizeof s->status, "%s \xc2\xb7 %zu row%s \xc2\xb7 %02lld:%02lld:%02lld.%03lld \xc2\xb7 %s / %s",
+	snprintf(s->status, sizeof s->status, "%s \xc2\xb7 %zu row%s \xc2\xb7 %02lld:%02lld:%02lld.%03lld \xc2\xb7 %.*s / %s",
 		s->bad > 1 ? "Query was canceled by user" : s->bad ? "\xe2\x9c\x97 Query completed with errors" : "\xe2\x9c\x93 Query executed successfully",
-		rows, rows == 1 ? "" : "s", ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000, s->spec.name, s->spec.db);
+		rows, rows == 1 ? "" : "s", ms / 3600000, ms / 60000 % 60, ms / 1000 % 60, ms % 1000, (int)strcspn(s->spec.name, "/"), s->spec.name, s->spec.db);   /* name/db's name, then its database */
 }
 
 /* a new run's empty results */
@@ -295,7 +295,7 @@ static void clear(Sess *s)
 {
 	core_buf_fill(E, core_buf_find(E, s->res), "", 0, 0);
 	for (size_t i = 0; i < s->ng; i++) free(s->g[i].w);
-	snprintf(s->status, sizeof s->status, "Executing query... \xc2\xb7 %s / %s", s->spec.name, s->spec.db);
+	snprintf(s->status, sizeof s->status, "Executing query... \xc2\xb7 %.*s / %s", (int)strcspn(s->spec.name, "/"), s->spec.name, s->spec.db);
 	s->ng = s->nsp = s->ncut = 0, s->in = s->bad = s->said = s->err = 0, s->part.n = s->held.n = s->msgs.n = s->whole.n = 0;
 }
 
@@ -533,7 +533,10 @@ static Cat *cat(const char *name, int make)
 	return c;
 }
 
-static char pickfor[NAME];   /* a server alone just picked: its databases, when read, open the picker again */
+/* a server alone just picked: its databases, when read, open the picker
+   again, unless a key reached sql_key since (any key but those the
+   terminal takes) or the terminal is open (SqlCat.tla's Pick) */
+static char pickfor[NAME];
 
 static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 {
@@ -544,7 +547,7 @@ static void uncat(Cat *c, int st)   /* its connection closed, its state st */
 	c->fd = -1, c->st = st;
 	if (st != 2) c->cols.n = c->tabs.n = 0;
 	if (mine) *pickfor = 0;
-	if (mine && st > 0 && !tools_term()) tools_pick(E, PICK_SQL), core_changed = 1;   /* the terminal took the keys meanwhile */
+	if (mine && st > 0 && !tools_term()) tools_pick(E, PICK_SQL), core_changed = 1;
 }
 
 static void catwake(void *ctx, int fd)
@@ -742,8 +745,9 @@ static int run(Sess *s, size_t a, size_t z)
 
 int sql_key(Editor *e, int key)
 {
-	W = NULL, *pickfor = 0, E = e;
+	W = NULL, *pickfor = 0;
 	if (key != KEY_F5 && key != KEY_BREAK && key != KEY_CTRL_C && key != KEY_ENTER) return 0;
+	E = e;
 	Sess *s = sess(e->buf->nr, 0);
 	if (key == KEY_ENTER) return s && s->res == e->buf->nr && e->mode == MODE_NORMAL && !e->ks.pending && whole(s);   /* as make_key */
 	if (key != KEY_F5) {
@@ -820,7 +824,7 @@ int sql_disconnect(Editor *e)
    with no message (completion or the status line asked, not Davy) */
 static Sess *conn(const Buf *b)
 {
-	Sess *s = E && is_sql(b) ? sess(b->nr, 1) : NULL;   /* E: lookup's messages go there; the first key sets it (sql_key) */
+	Sess *s = is_sql(b) ? sess(b->nr, 1) : NULL;
 	char m[sizeof E->msg];
 	Spec c;
 	if (s && !s->spec.name[0] && !s->looked) {
@@ -841,17 +845,18 @@ static const char *marked(const char *name, int live)
 	return live ? (snprintf(m, sizeof m, "%s \xe2\x9c\x93", name), m) : name;
 }
 
-const char *sql_status(const Buf *b, int *live)
+const char *sql_status(Editor *e, const Buf *b)
 {
+	E = e;
 	Sess *s = conn(b);
-	return s ? marked(s->spec.name, *live = up(s)) : NULL;
+	return s ? marked(s->spec.name, up(s)) : NULL;
 }
 
 /* The picker's items as name\0, rebuilt at item 0: each connection in the
    file, each followed by its server's databases once a catalog read them */
 static Str items;
 
-const char *sql_pick(Editor *e, int i, int *live)
+const char *sql_pick(Editor *e, int i)
 {
 	static size_t at, n;   /* item n is at items.s + at: the picker asks in order */
 	E = e;
@@ -872,9 +877,9 @@ const char *sql_pick(Editor *e, int i, int *live)
 	}
 	for (; n < (size_t)i && at < items.n; n++) at += strlen(items.s + at) + 1;
 	if (n != (size_t)i || at >= items.n) return NULL;
-	*live = 0;
-	for (size_t j = 0; j < nS && !*live; j++) *live = up(S[j]) && !strcmp(S[j]->spec.name, items.s + at);
-	return marked(items.s + at, *live);
+	int live = 0;
+	for (size_t j = 0; j < nS && !live; j++) live = up(S[j]) && !strcmp(S[j]->spec.name, items.s + at);
+	return marked(items.s + at, live);
 }
 
 int sql_catalog(Editor *e, const Buf *b, const char *table, void (*fn)(void *ctx, const char *schema, const char *table, const char *column), void *ctx)

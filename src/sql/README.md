@@ -74,10 +74,12 @@ its default database, Postgres's `postgres`.
 each server whose catalog has been read, its databases as `name/db`. A
 connection a buffer is logged in on is marked ✓. Picking a server alone
 reads its databases on a connection of its own, and the picker opens again
-with them, unless a key comes first. The databases come with the catalog's
+with them, unless a key comes first or the terminal is open
+(`design/specs/SqlCat.tla`). The databases come with the catalog's
 one query (rows with schema `''`), so a later client adds its own
 listing there. The buffer's status line shows its connection, marked ✓ while
-logged in.
+logged in. A buffer looks its folder's connection up once, so a `dir` line
+added later shows from its next F5 or `:Connect`.
 
 `trust` accepts the server's own (self-signed) certificate. `pass=` comes
 last and takes the rest of the line, so a password may hold spaces. A file that
