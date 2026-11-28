@@ -1,10 +1,14 @@
 #!/bin/bash
-# PostgreSQL on the bench (.github/workflows/pg-bench.yml, on the Windows runner's own PostgreSQL): the console debugger
+# PostgreSQL on the bench (.github/workflows/pg-bench.yml, on the Windows runner): the console debugger
 # attaches to the backend of a session that sleeps, stops it in the executor at its next query, looks around, steps,
 # and goes; the session must then get its answer and the server must live. usage: pg.sh <hdbg.exe>
 set -eu
-hdbg=$1; root=$(cygpath "$PGROOT"); work=$(mktemp -d); export PATH="$root/bin:$PATH" PGUSER=postgres PGPORT=5544 PGHOST=localhost PGDATABASE=postgres
-ls "$root" "$root/symbols" | head -40
+hdbg=$1; work=$(mktemp -d); export PGUSER=postgres PGPORT=5544 PGHOST=localhost PGDATABASE=postgres
+# the runner's PostgreSQL comes without debug information; the same version's archive from its builder has it (pgsql/symbols)
+version=$("$(cygpath "$PGROOT")/bin/postgres" --version | sed 's/.* //' | tr -d '\r')
+for build in 1 2 3; do curl -sfL -o "$work/pg.zip" "https://get.enterprisedb.com/postgresql/postgresql-$version-$build-windows-x64-binaries.zip" && break; done
+(cd "$work" && unzip -q pg.zip 'pgsql/bin/*' 'pgsql/lib/*' 'pgsql/share/*' 'pgsql/symbols/*' && ls pgsql pgsql/symbols | head -30)
+root="$work/pgsql"; export PATH="$root/bin:$PATH"
 cp "$root"/symbols/postgres.pdb "$root/bin/"   # the debugger looks for a module's debug information beside it
 ls -l "$root/bin/postgres.exe" "$root/bin/postgres.pdb"
 initdb -D "$work/data" -U postgres -A trust > /dev/null

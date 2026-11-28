@@ -1,4 +1,4 @@
-# A real server on the bench: the console debugger attached to a PostgreSQL backend (tests/pg.sh), on the runner's own PostgreSQL.
+# A real server on the bench: the console debugger attached to a PostgreSQL backend (tests/pg.sh).
 name: pg-bench
 on:
   push:
