@@ -21,6 +21,8 @@ jobs:
         run: |
           foreach ($f in Get-ChildItem rdi/*.exe -Exclude crash*) {   # an exception stops Visual Studio on a dialog
           ./vs/trace.ps1 $f.FullName (Join-Path $PWD traces-vs) 150; if ($LASTEXITCODE) { exit 1 } }
+          # a Visual Studio that did not quit holds the programs open, and the pull below cannot replace one that was recorded anew meanwhile
+          Get-Process devenv, VsDebugConsole -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Seconds 5
           foreach ($f in Get-ChildItem traces-vs/*.txt) { "===== $($f.Name) (first 25 lines)"; Get-Content $f -TotalCount 25 }
       - name: Commit what Visual Studio did to this branch
         shell: bash
