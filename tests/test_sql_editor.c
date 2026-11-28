@@ -449,9 +449,11 @@ int main(void)
 		"select g, pg_temp.s(g) from generate_series(1, 3) g\n", 0600);   /* the notice sends row 1 at once (Postgres flushes for it) */
 	CHECK(!core_edit_file(&e, "pg/trickle.sql", 0) && sql_key(&e, KEY_F5) == 1);
 	CHECK(strstr(until("\n      1 \xe2\x94\x82 1 "), "\xe2\x94\x82 g ") && !strstr(res, "\n      2 \xe2\x94\x82") && !strstr(res, "Completion"));   /* row 2 comes 1 s later */
-	CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, 2, 10), e.mode = MODE_INSERT, sql_key(&e, KEY_ENTER) == 0) && (e.mode = MODE_NORMAL, e.ks.pending = 1, sql_key(&e, KEY_ENTER) == 0));
+	size_t r1 = 0;   /* row 1's line, after the create's message */
+	for (const char *q = res; q < strstr(res, "\n      1 \xe2\x94\x82"); q++) r1 += *q == '\n';
+	CHECK(!core_win_goto(&e, 'j', 1) && (core_goto(&e, r1 + 1, 10), e.mode = MODE_INSERT, sql_key(&e, KEY_ENTER) == 0) && (e.mode = MODE_NORMAL, e.ks.pending = 1, sql_key(&e, KEY_ENTER) == 0));
 	e.ks.pending = 0;
-	CHECK(!core_win_goto(&e, 'k', 1));
+	CHECK(sql_key(&e, KEY_ENTER) == 1 && !core_close(&e, 1) && !core_win_goto(&e, 'k', 1));   /* there it is a cell */
 	CHECK(strstr(until("Completion time"), "\n      3 \xe2\x94\x82 3 ") && strstr(res, "\n(3 rows)\n"));
 	CHECK(!sql_disconnect(&e));
 	/* a connection that dies inside a set, long after its rows began to
